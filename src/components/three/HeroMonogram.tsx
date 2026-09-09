@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { MONOGRAM_CONTOURS } from "./monogramContours";
+import { ConstellationField } from "./ConstellationField";
 import { seeded } from "@/lib/utils";
 
 /**
@@ -137,27 +138,6 @@ function Monogram({ blast }: { blast: React.RefObject<number> }) {
   );
 }
 
-/** The thin wire-lines the hero's "DARE ⚡ TO TOUCH THE LINES." caption refers to. */
-function WireLines() {
-  const geometry = useMemo(() => {
-    const pts: number[] = [];
-    for (let i = 0; i < 7; i++) {
-      const y = (seeded(i + 7) - 0.5) * 5;
-      pts.push(-8, y, -1.5, 8, y + (seeded(i + 17) - 0.5) * 2.4, -1.5);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-    return g;
-  }, []);
-
-  useEffect(() => () => geometry.dispose(), [geometry]);
-
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color="#3a3a3a" transparent opacity={0.5} />
-    </lineSegments>
-  );
-}
 
 
 /**
@@ -217,8 +197,11 @@ function Motes() {
         sizeAttenuation
         transparent
         depthWrite={false}
-        opacity={0.55}
-        color="#dfe6ff"
+        // The deep field is the faintest layer by definition. At 0.55 it was
+        // out-shining the catalogued zodiac stars in front of it, and was the
+        // brightest thing in the hero after the mark's own highlights.
+        opacity={0.32}
+        color="#c2ccdf"
         blending={THREE.AdditiveBlending}
       />
     </points>
@@ -338,7 +321,7 @@ function Scene() {
       <directionalLight position={[-4, 5, 4]} intensity={0.9} color="#cfd8ff" />
       <pointLight position={[3.1, -2.2, 2.4]} intensity={4} distance={10} color="#e2521f" />
       <Monogram blast={blast} />
-      <WireLines />
+      <ConstellationField />
       <Motes />
     </>
   );

@@ -107,6 +107,26 @@ never add strokes, grooves or connecting lines to it.
 
 To regenerate: `python3 scripts/trace-monogram.py path/to/artwork.png`.
 
+## The hero sky
+
+`components/three/ConstellationField.tsx` renders the twelve zodiac constellations along a true
+ecliptic band, from real J2000 coordinates in `zodiacData.ts`. Aries — the owner's sign — is the one
+asterism drawn with lines; the rest contribute stars only, so their exact geometry is never legible
+as a shape.
+
+It is deliberately subordinate to the mark, and three rules keep it there. Do not relax them without
+re-measuring:
+
+1. **Brightness budget.** No sky pixel may exceed the mark's brightest chamfer highlight. Verify
+   numerically from a screenshot rather than by eye — this was violated twice during the build, once
+   by the featured stars and once by the deep-field motes, and neither was obvious visually. Current
+   headroom is about +7 luminance.
+2. **Clear zone.** Stars within a screen-space radius of the mark are dropped, not dimmed, so it
+   always sits in empty sky.
+3. **Layer order by brightness.** Deep-field motes are the faintest layer, then catalogued stars by
+   magnitude, then the featured sign, then its lines. Brightness must track magnitude: Hamal
+   (mag 2.0) leads Aries, not 41 Arietis (mag 3.63).
+
 ## Visual validation loop — mandatory
 
 For every section, before ticking it in `REPLICATION-CHECKLIST.md`:

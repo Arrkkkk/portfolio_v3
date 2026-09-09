@@ -43,12 +43,16 @@ export function Preloader() {
         },
       })
         .from(".pl-frame", { scale: 0.9, opacity: 0, duration: 0.8, ease: "expo.out" }, 0)
-        // fromTo, not to: the mask paths live inside <defs>, so GSAP cannot
-        // reliably read their starting dash offset from the stylesheet.
         .fromTo(
-          ".mono-draw",
-          { strokeDashoffset: 1000 },
-          { strokeDashoffset: 0, duration: 1.5, ease: "power1.inOut" },
+          ".mono-piece",
+          { opacity: 0, scale: 0.94, transformOrigin: "50% 50%" },
+          {
+            opacity: 1,
+            scale: 1,
+            duration: 0.9,
+            ease: "expo.out",
+            stagger: 0.18,
+          },
           0.2,
         )
         .from(".pl-word", { opacity: 0, y: 6, duration: 0.5, stagger: 0.08, ease: "expo.out" }, 0.5)

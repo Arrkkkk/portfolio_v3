@@ -9,8 +9,8 @@ import { MonoLink } from "@/components/primitives/MonoLink";
 import { useSceneEnabled } from "@/components/three/SceneGate";
 import { site } from "@/data/site";
 
-const HeroShards = dynamic(
-  () => import("@/components/three/HeroShards").then((m) => m.HeroShards),
+const HeroMonogram = dynamic(
+  () => import("@/components/three/HeroMonogram").then((m) => m.HeroMonogram),
   { ssr: false },
 );
 
@@ -25,7 +25,7 @@ export function Hero() {
       className="relative min-h-svh w-full overflow-hidden bg-dark text-text-hi"
     >
       <div ref={stage} className="absolute inset-0">
-        {sceneOn ? <HeroShards /> : <div className="h-full w-full bg-dark" />}
+        {sceneOn ? <HeroMonogram /> : <div className="h-full w-full bg-dark" />}
         <CursorRing containerRef={stage} />
       </div>
 

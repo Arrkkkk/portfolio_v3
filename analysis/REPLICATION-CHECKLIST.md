@@ -112,6 +112,12 @@ Verified in the loop at 1710 × 951 against the named frames (`npm run shot`, ou
 `analysis/_shots/`), with `npm run verify` covering mobile, reduced motion and runtime errors.
 `next build`, `tsc --noEmit` and `eslint --max-warnings=0` all pass.
 
+Hero mark: the reference's hero object is TRIONN's own monogram rendered as 3D shards, so the
+content mapping is the owner's RA monogram — auto-traced from their artwork
+(`scripts/trace-monogram.py`) and extruded. It swings within ±35° rather than spinning, because an
+extruded flat logo reads as a blank slab edge-on. The same traced contours drive the header lockup
+and the preloader, so the mark is identical everywhere.
+
 Known deltas from the reference, accepted for now:
 * The display face is **General Sans**, not PP Neue Montreal — slightly wider, so long
   headlines run ~2% longer than the reference at the same size.

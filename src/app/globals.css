@@ -187,11 +187,9 @@
   will-change: transform, filter, opacity;
 }
 
-/* A01 — the monogram draws itself on in the preloader. Paths carry
-   pathLength="1000" (not 1 — GSAP rounds stroke-dashoffset to integers). */
-.mono-draw {
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
+/* A01 — the monogram assembles piece by piece in the preloader. */
+.mono-piece {
+  opacity: 0;
 }
 
 /* A05 — scrubbed word reveal. */

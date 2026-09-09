@@ -1,28 +1,42 @@
 "use client";
 
+/* eslint-disable react-hooks/immutability --
+ * The frame loop writes straight into geometry attribute buffers and a scratch
+ * array, which React Compiler flags because they originate in a memo. That is a
+ * false positive for this idiom: driving react-three-fiber means mutating
+ * buffers in place every frame, and re-allocating them to satisfy the rule
+ * would push ~9KB to the GPU sixty times a second for no benefit. Everything
+ * mutated here is created once in buildField and owned by nothing else.
+ */
+
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { FEATURED_SIGN, ZODIAC } from "./zodiacData";
 import { seeded } from "@/lib/utils";
 
 /**
- * The hero's sky: the twelve zodiac constellations strung along a true
- * ecliptic band, with Aries — the owner's sign — as the one asterism whose
- * lines are actually drawn.
+ * The hero's sky: the twelve zodiac constellations on a true ecliptic band,
+ * drifting at a sidereal pace so every sign comes round in turn.
  *
- * Everything here is subordinate to the monogram. Three rules keep it that
- * way, and they are the reason this reads as depth rather than decoration:
+ * Aries — the owner's sign — is always drawn. The other eleven are anonymous
+ * scatter until the cursor comes near, at which point their stars brighten and
+ * their asterism draws in. The reveal radius is deliberately generous: hero
+ * backgrounds do not get deliberately explored, so this has to be found by
+ * accident, as a soft ripple following the cursor, rather than by hunting.
  *
- *   1. Visual mass, not peak brightness. Stars are allowed to out-peak the
- *      mark — in a real sky they are the brightest points in frame, and that
- *      is what makes them read as stars. What keeps the sky subordinate is how
- *      little of the frame it lights: a sparse scatter of points against a
- *      large, continuously modelled object. An earlier version capped peak
- *      brightness below the mark's and was invisible on a dimmed laptop.
- *   2. A clear zone. Stars fade out within a screen-space radius of the mark,
- *      so it always sits in empty sky and never picks up a busy halo.
+ * Everything here is subordinate to the monogram:
+ *
+ *   1. Visual mass, not peak brightness. Stars may out-peak the mark — in a
+ *      real sky they are the brightest points in frame, and that is what makes
+ *      them read as stars. What keeps the sky subordinate is how little of the
+ *      frame it lights. An earlier version capped peak brightness below the
+ *      mark's and was invisible on a dimmed laptop.
+ *   2. A clear zone. Stars fade out near the mark, so it always sits in empty
+ *      sky. Because the band drifts, this is recomputed every frame.
  *   3. Cool greys only. The ember stays the mark's alone.
+ *   4. Richness comes from density, not level.
  *
  * None of this touches the mark's lighting: the Lightformer environment is a
  * separate cube render, so a visible star layer is invisible to its reflections.
@@ -30,7 +44,6 @@ import { seeded } from "@/lib/utils";
 
 /** Obliquity of the ecliptic, J2000, in degrees. */
 const OBLIQUITY = 23.4393;
-
 const DEG = Math.PI / 180;
 
 /** Equatorial (RA/Dec) to ecliptic (longitude/latitude), all in degrees. */
@@ -49,61 +62,91 @@ function toEcliptic(ra: number, dec: number) {
 }
 
 // --- Placement -------------------------------------------------------------
-// The band is a cylindrical projection of the sky: ecliptic longitude runs
-// along it, latitude across it. Longitude is centred on Aries and the whole
-// band is tilted, which puts the featured sign in the composition's dead space
-// (upper right) and keeps the band off the headline.
+// A cylindrical projection: ecliptic longitude along the band, latitude across
+// it, the whole thing tilted so it reads as a diagonal rather than a horizon.
 
-/** Ecliptic longitude placed at the band's anchor point. Aries sits near 40°. */
+/** Longitude at the band's anchor at t=0 — Aries sits near 40°. */
 const LON_CENTRE = 40;
 /** World units per degree of ecliptic angle. */
 const SCALE = 0.18;
-/** Band tilt, degrees — echoes the diagonal hairlines this replaced. */
+/** Band tilt, degrees. */
 const TILT = -9;
-/**
- * Where the anchor lands, in world units on the star plane. Tuned so Aries
- * clears the top edge and sits in the dead space right of the headline and
- * above the mark, rather than being clipped by the viewport.
- */
+/** Where the anchor lands, in world units on the star plane. */
 const ANCHOR = new THREE.Vector2(3.97, 0.49);
-/** All stars sit on one plane behind the mark. */
+/** All zodiac stars sit on one plane behind the mark. */
 const PLANE_Z = -4;
+
+/**
+ * Sidereal drift. A full turn of the zodiac takes 15 minutes, so every sign
+ * comes round, Aries returns to its composed position each cycle, and the
+ * motion stays slow enough (~9px/s) to read as drift rather than animation.
+ */
+const DRIFT_DEG_PER_SEC = 360 / 900;
 
 /** Camera Z, mirrored from the Canvas — used for the screen-space clear zone. */
 const CAMERA_Z = 6.2;
-/** Screen radius (tan-space) the mark occupies, plus margin. */
 const CLEAR_INNER = 0.3;
 const CLEAR_OUTER = 0.46;
+
+/** Reveal falloff, in world units on the star plane (~120px per unit). */
+const REVEAL_NEAR = 1.0;
+const REVEAL_FAR = 5.0;
+/** Aries never drops below this, being the owner's own sign. */
+const FEATURED_FLOOR = 0.34;
 
 const tiltCos = Math.cos(TILT * DEG);
 const tiltSin = Math.sin(TILT * DEG);
 
-function project(lon: number, lat: number) {
-  // wrap longitude into ±180 of the centre so signs either side of Aries
-  // land left and right of it rather than a full turn away
-  let dLon = lon - LON_CENTRE;
-  if (dLon > 180) dLon -= 360;
-  if (dLon < -180) dLon += 360;
+/** Asterism line colour, as fractions. */
+const LINE_R = 0.624;
+const LINE_G = 0.69;
+const LINE_B = 0.831;
 
+/** Star colour, linear-ish fractions of a cool white. */
+const STAR_R = 0.725;
+const STAR_G = 0.776;
+const STAR_B = 0.894;
+
+/** Wrap an angle in degrees into ±180. */
+const wrap180 = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+
+function projectInto(out: THREE.Vector2, dLon: number, lat: number) {
   const x = dLon * SCALE;
   const y = lat * SCALE;
-  return new THREE.Vector2(
+  out.set(
     x * tiltCos - y * tiltSin + ANCHOR.x,
     x * tiltSin + y * tiltCos + ANCHOR.y,
   );
+  return out;
 }
 
-/**
- * 0 where the mark is, 1 well clear of it. Compared in tan-space — the ratio of
- * world offset to distance-from-camera — so the plane's depth is accounted for
- * rather than assuming the sky sits at the mark's Z.
- */
-function clearZone(p: THREE.Vector2) {
-  const screenR = p.length() / (CAMERA_Z - PLANE_Z);
+/** 0 where the mark is, 1 well clear of it, compared in tan-space. */
+function clearZone(x: number, y: number) {
+  const screenR = Math.hypot(x, y) / (CAMERA_Z - PLANE_Z);
   return THREE.MathUtils.smoothstep(screenR, CLEAR_INNER, CLEAR_OUTER);
 }
 
-/** Soft round sprite — one texture shared by every magnitude bin. */
+/**
+ * The headline block, in normalised device coordinates. Some signs are simply
+ * huge — Pisces spans ~38° of longitude — so a correctly drawn asterism can
+ * still sweep a line straight through "Designed to feel effortless.". The mark
+ * has a radial clear zone; the type needs a rectangular one.
+ */
+const TEXT_RECT = { x0: -1.05, x1: -0.6, y0: 0.2, y1: 0.86 };
+const TEXT_FEATHER = 0.16;
+
+/** 1 in open sky, falling to 0 over the headline. */
+function textMask(ndcX: number, ndcY: number) {
+  const dx = Math.max(TEXT_RECT.x0 - ndcX, ndcX - TEXT_RECT.x1);
+  const dy = Math.max(TEXT_RECT.y0 - ndcY, ndcY - TEXT_RECT.y1);
+  const outside = Math.max(dx, dy);
+  return THREE.MathUtils.smoothstep(outside, 0, TEXT_FEATHER);
+}
+
+/** Brightness from apparent magnitude — brighter stars carry more light. */
+const lumFor = (mag: number) => THREE.MathUtils.clamp(1.15 - 0.19 * mag, 0.22, 1);
+
+/** Soft round sprite, shared by every layer. */
 function useStarTexture() {
   return useMemo(() => {
     const c = document.createElement("canvas");
@@ -119,35 +162,28 @@ function useStarTexture() {
   }, []);
 }
 
-/**
- * Magnitude bins. PointsMaterial applies one size to the whole draw call and
- * ignores a per-vertex size attribute, so brightness classes are separate
- * Points objects rather than one buffer.
- */
-const BINS = [
-  { max: 2.5, size: 0.17, opacity: 0.62 },
-  { max: 3.5, size: 0.115, opacity: 0.48 },
-  { max: Infinity, size: 0.075, opacity: 0.34 },
+/** Size tiers by magnitude — PointsMaterial applies one size per draw call. */
+const TIERS = [
+  { max: 2.5, size: 0.17 },
+  { max: 3.5, size: 0.115 },
+  { max: Infinity, size: 0.075 },
 ];
 
+// --- Deep field ------------------------------------------------------------
+
 /**
- * The deep field: the anonymous dusting a real sky has behind its named stars.
+ * The anonymous dusting a real sky has behind its named stars. Density is what
+ * makes this read as sky; each star is individually very faint, so the visual
+ * mass stays low because each lights almost nothing, not because there are few.
  *
- * Density is what makes this read as sky rather than as a handful of dots, so
- * there are a lot of them and they are individually very faint — the visual
- * mass stays low because each star lights almost nothing, not because there
- * are few. Per-star brightness and colour temperature come from vertex colours
- * (PointsMaterial supports those even though it ignores per-vertex size), with
- * a power-law distribution so the great majority sit near the threshold and
- * only a handful carry any weight.
- *
- * Split into size tiers because size is per-draw-call. Everything is seeded, so
- * the sky composes identically on every load.
+ * Generated in band coordinates and tiled along the band, so the same drift
+ * that carries the zodiac carries the background with it and wraps seamlessly.
  */
+const FIELD_PERIOD = 30;
 const FIELD_TIERS = [
-  { count: 520, size: 0.045, spread: 1.0 },
-  { count: 170, size: 0.075, spread: 0.9 },
-  { count: 44, size: 0.11, spread: 0.8 },
+  { count: 700, size: 0.045 },
+  { count: 230, size: 0.075 },
+  { count: 60, size: 0.11 },
 ];
 
 function DeepField({ texture }: { texture: THREE.Texture }) {
@@ -155,37 +191,47 @@ function DeepField({ texture }: { texture: THREE.Texture }) {
 
   const tiers = useMemo(() => {
     let seed = 900;
-    return FIELD_TIERS.map(({ count, spread }) => {
-      const pos = new Float32Array(count * 3);
-      const col = new Float32Array(count * 3);
+    return FIELD_TIERS.map(({ count }) => {
+      // two tiles, so translating by up to one period always leaves cover
+      const total = count * 2;
+      const pos = new Float32Array(total * 3);
+      const col = new Float32Array(total * 3);
       for (let i = 0; i < count; i++) {
-        pos[i * 3] = (seeded(seed++) - 0.5) * 22 * spread;
-        pos[i * 3 + 1] = (seeded(seed++) - 0.5) * 12.4 * spread;
-        // Depth spread gives the pointer drift something to parallax against.
-        // All behind the mark, so the mark's own depth test occludes them.
-        pos[i * 3 + 2] = -1.6 - seeded(seed++) * 7.4;
-
-        // Power law: most stars sit just above the threshold.
+        const bandX = seeded(seed++) * FIELD_PERIOD;
+        const bandY = (seeded(seed++) - 0.5) * 15;
+        const z = -1.6 - seeded(seed++) * 7.4;
         const b = 0.1 + Math.pow(seeded(seed++), 2.4) * 0.9;
-        // Colour temperature — mostly cool, occasionally warm, as a real field.
         const warm = Math.pow(seeded(seed++), 3);
-        col[i * 3] = b * (0.66 + warm * 0.34);
-        col[i * 3 + 1] = b * (0.73 + warm * 0.19);
-        col[i * 3 + 2] = b * (0.92 - warm * 0.16);
+        const r = b * (0.66 + warm * 0.34);
+        const g = b * (0.73 + warm * 0.19);
+        const bl = b * (0.92 - warm * 0.16);
+
+        for (const tile of [0, 1]) {
+          const j = (i + tile * count) * 3;
+          const bx = bandX + tile * FIELD_PERIOD;
+          pos[j] = bx * tiltCos - bandY * tiltSin;
+          pos[j + 1] = bx * tiltSin + bandY * tiltCos;
+          pos[j + 2] = z;
+          col[j] = r;
+          col[j + 1] = g;
+          col[j + 2] = bl;
+        }
       }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      return g;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geometry.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      return geometry;
     });
   }, []);
 
   useEffect(() => () => tiers.forEach((g) => g.dispose()), [tiers]);
 
   useFrame((state) => {
-    if (group.current) {
-      group.current.rotation.z = state.clock.elapsedTime * 0.004;
-    }
+    const g = group.current;
+    if (!g) return;
+    const along = state.clock.elapsedTime * DRIFT_DEG_PER_SEC * SCALE;
+    const wrapped = -(along % FIELD_PERIOD) - FIELD_PERIOD * 0.5;
+    g.position.set(wrapped * tiltCos, wrapped * tiltSin, 0);
   });
 
   return (
@@ -208,159 +254,264 @@ function DeepField({ texture }: { texture: THREE.Texture }) {
   );
 }
 
+// --- Constellations --------------------------------------------------------
+
+type PlacedStar = {
+  sign: number;
+  lat: number;
+  /** Longitude offset from its sign's reference star, wrapped once at build.
+   *  Signs are placed as rigid figures: Pisces straddles 0°/360°, so wrapping
+   *  each star independently tore it in half across the sky. */
+  offset: number;
+  lum: number;
+  tier: number;
+  /** Index within its tier's buffer. */
+  slot: number;
+  /** Index into the flat `stars` array — precomputed so the frame loop never
+   *  has to search for a star it already has a handle on. */
+  index: number;
+};
+
+/** Places every zodiac star once and allocates the buffers the frame loop writes. */
+function buildField() {
+  const stars: PlacedStar[] = [];
+  const counts = TIERS.map(() => 0);
+  // Each sign is anchored to its first star; every other member is placed as a
+  // fixed offset from it, so the figure stays rigid wherever the drift puts it.
+  const refLons: number[] = [];
+
+  ZODIAC.forEach((sign, s) => {
+    for (const star of sign.stars) {
+      const { lon, lat } = toEcliptic(star.ra, star.dec);
+      refLons[s] ??= lon;
+      const tier = TIERS.findIndex((t) => star.mag < t.max);
+      stars.push({
+        sign: s,
+        lat,
+        offset: wrap180(lon - refLons[s]),
+        lum: lumFor(star.mag),
+        tier,
+        slot: counts[tier]++,
+        index: stars.length,
+      });
+    }
+  });
+
+  const tierGeoms = counts.map((n) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    return g;
+  });
+
+  // One line geometry per sign; vertices are rewritten each frame as the
+  // band drifts, which is cheaper and simpler than tiling the geometry.
+  const lineGeoms = ZODIAC.map((sign) => {
+    const g = new THREE.BufferGeometry();
+    const n = sign.lines.length * 2;
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    // vertex colours, so a line can fade along its length where it crosses the
+    // headline rather than being all-or-nothing
+    g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    return g;
+  });
+
+  // flat indices grouped by sign, for the per-sign endpoint lookups
+  const bySign = ZODIAC.map(() => [] as number[]);
+  for (const st of stars) bySign[st.sign].push(st.index);
+
+  const featured = ZODIAC.findIndex((s) => s.key === FEATURED_SIGN);
+  return { stars, tierGeoms, lineGeoms, bySign, featured, refLons };
+}
+
 export function ConstellationField() {
   const texture = useStarTexture();
-  const group = useRef<THREE.Group>(null);
-  const ariesLines = useRef<THREE.LineSegments>(null);
   const { pointer } = useThree();
 
-  const { bins, featuredBins, aries, ariesCentre, eclipticLine } = useMemo(() => {
-    const binned: THREE.BufferGeometry[] = BINS.map(() => new THREE.BufferGeometry());
-    const buckets: number[][] = BINS.map(() => []);
-    const featuredBinned: THREE.BufferGeometry[] = BINS.map(
-      () => new THREE.BufferGeometry(),
-    );
-    const featuredBuckets: number[][] = BINS.map(() => []);
+  const labelGroup = useRef<THREE.Group>(null);
+  const labelEl = useRef<HTMLDivElement>(null);
 
-    for (const sign of ZODIAC) {
-      // The featured sign is boosted, but still binned by magnitude: rendering
-      // its stars at one uniform brightness made 41 Arietis (mag 3.63) as
-      // bright as Hamal (mag 2.0), which is backwards. Hamal should lead it.
-      const featured = sign.key === FEATURED_SIGN;
-      for (const star of sign.stars) {
-        const { lon, lat } = toEcliptic(star.ra, star.dec);
-        const p = project(lon, lat);
-        // Stars inside the clear zone are dropped outright rather than dimmed:
-        // a faint smudge behind the mark is worse than nothing there.
-        if (clearZone(p) < 0.12) continue;
-        const bin = BINS.findIndex((b) => star.mag < b.max);
-        (featured ? featuredBuckets : buckets)[bin].push(p.x, p.y, PLANE_Z);
-      }
-    }
-
-    buckets.forEach((pts, i) => {
-      binned[i].setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-    });
-    featuredBuckets.forEach((pts, i) => {
-      featuredBinned[i].setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-    });
-
-    // Featured asterism.
-    const sign = ZODIAC.find((s) => s.key === FEATURED_SIGN)!;
-    const projected = sign.stars.map((s) => {
-      const { lon, lat } = toEcliptic(s.ra, s.dec);
-      return project(lon, lat);
-    });
-    const segments: number[] = [];
-    for (const [a, b] of sign.lines ?? []) {
-      segments.push(projected[a].x, projected[a].y, PLANE_Z);
-      segments.push(projected[b].x, projected[b].y, PLANE_Z);
-    }
-    const ariesGeom = new THREE.BufferGeometry();
-    ariesGeom.setAttribute("position", new THREE.Float32BufferAttribute(segments, 3));
-
-
-    const centre = projected
-      .reduce((acc, p) => acc.add(p), new THREE.Vector2())
-      .divideScalar(projected.length);
-
-    // The ecliptic itself: latitude zero, running the length of the band.
-    const ecliptic = new THREE.BufferGeometry();
-    const a = project(LON_CENTRE - 150, 0);
-    const b = project(LON_CENTRE + 150, 0);
-    ecliptic.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute([a.x, a.y, PLANE_Z, b.x, b.y, PLANE_Z], 3),
-    );
-
-    return {
-      bins: binned,
-      featuredBins: featuredBinned,
-      aries: ariesGeom,
-      ariesCentre: centre,
-      eclipticLine: ecliptic,
-    };
-  }, []);
+  const built = useMemo(() => buildField(), []);
+  const scratch = useMemo(
+    () => ({
+      v: new THREE.Vector2(),
+      xs: new Float32Array(built.stars.length),
+      ys: new Float32Array(built.stars.length),
+      hover: new Float32Array(ZODIAC.length),
+      base: new Float32Array(ZODIAC.length),
+    }),
+    [built],
+  );
 
   useEffect(() => {
+    const { tierGeoms, lineGeoms } = built;
     return () => {
-      texture.dispose();
-      bins.forEach((g) => g.dispose());
-      featuredBins.forEach((g) => g.dispose());
-      aries.dispose();
-      eclipticLine.dispose();
+      tierGeoms.forEach((g) => g.dispose());
+      lineGeoms.forEach((g) => g.dispose());
     };
-  }, [texture, bins, featuredBins, aries, eclipticLine]);
+  }, [built]);
 
-  useFrame(() => {
-    // "DARE ⚡ TO TOUCH THE LINES." — the asterism answers the cursor.
-    const line = ariesLines.current;
-    if (line) {
-      const half = (CAMERA_Z - PLANE_Z) * Math.tan((42 / 2) * DEG);
-      const px = pointer.x * half * (1710 / 951);
-      const py = pointer.y * half;
-      const d = Math.hypot(px - ariesCentre.x, py - ariesCentre.y);
-      const near = 1 - THREE.MathUtils.smoothstep(d, 1.2, 4);
-      const mat = line.material as THREE.LineBasicMaterial;
-      mat.opacity = THREE.MathUtils.lerp(mat.opacity, 0.32 + near * 0.3, 0.08);
+  useEffect(() => () => texture.dispose(), [texture]);
+
+
+  useFrame((state) => {
+    const { stars, tierGeoms, lineGeoms, bySign, featured, refLons } = built;
+    const { v, xs, ys, hover, base } = scratch;
+
+    const centre = LON_CENTRE + state.clock.elapsedTime * DRIFT_DEG_PER_SEC;
+
+    // 1. place each sign as a rigid figure, then its stars relative to it
+    for (let s = 0; s < refLons.length; s++) base[s] = wrap180(refLons[s] - centre);
+    for (let i = 0; i < stars.length; i++) {
+      projectInto(v, base[stars[i].sign] + stars[i].offset, stars[i].lat);
+      xs[i] = v.x;
+      ys[i] = v.y;
     }
 
-    // A shallow counter-drift against the pointer separates the sky from the
-    // mark without ever moving far enough to unseat the composition.
-    const g = group.current;
-    if (g) {
-      g.position.x = THREE.MathUtils.lerp(g.position.x, -pointer.x * 0.12, 0.03);
-      g.position.y = THREE.MathUtils.lerp(g.position.y, -pointer.y * 0.08, 0.03);
+    // 2. cursor position on the star plane, and each sign's reveal strength.
+    //    Distance is to the sign's *nearest* star rather than its centroid —
+    //    for a long figure like Scorpius the centroid sits in empty sky.
+    const halfH = (CAMERA_Z - PLANE_Z) * Math.tan((42 / 2) * DEG);
+    const halfW = halfH * (state.size.width / state.size.height);
+    const px = pointer.x * halfW;
+    const py = pointer.y * halfH;
+
+    /** Combined content mask: clear of the mark, and clear of the headline. */
+    const visible = (x: number, y: number) =>
+      clearZone(x, y) * textMask(x / halfW, y / halfH);
+
+    hover.fill(0);
+    for (let i = 0; i < stars.length; i++) {
+      const d = Math.hypot(px - xs[i], py - ys[i]);
+      const near = 1 - THREE.MathUtils.smoothstep(d, REVEAL_NEAR, REVEAL_FAR);
+      if (near > hover[stars[i].sign]) hover[stars[i].sign] = near;
+    }
+    hover[featured] = Math.max(hover[featured], FEATURED_FLOOR);
+
+    // 3. write star positions and colours
+    for (let i = 0; i < stars.length; i++) {
+      const st = stars[i];
+      const geom = tierGeoms[st.tier];
+      const p = geom.attributes.position as THREE.BufferAttribute;
+      const c = geom.attributes.color as THREE.BufferAttribute;
+      const j = st.slot * 3;
+      p.array[j] = xs[i];
+      p.array[j + 1] = ys[i];
+      p.array[j + 2] = PLANE_Z;
+
+      const lit = st.lum * (0.55 + hover[st.sign] * 1.15) * visible(xs[i], ys[i]);
+      c.array[j] = STAR_R * lit;
+      c.array[j + 1] = STAR_G * lit;
+      c.array[j + 2] = STAR_B * lit;
+    }
+    for (const g of tierGeoms) {
+      g.attributes.position.needsUpdate = true;
+      g.attributes.color.needsUpdate = true;
+      g.computeBoundingSphere();
+    }
+
+    // 4. asterism lines
+    ZODIAC.forEach((sign, s) => {
+      const geom = lineGeoms[s];
+      const arr = geom.attributes.position.array as Float32Array;
+      const col = geom.attributes.color.array as Float32Array;
+      const mine = bySign[s];
+      const strength = hover[s];
+      sign.lines.forEach(([a, b], k) => {
+        const ia = mine[a];
+        const ib = mine[b];
+        const o = k * 6;
+        arr[o] = xs[ia];
+        arr[o + 1] = ys[ia];
+        arr[o + 2] = PLANE_Z;
+        arr[o + 3] = xs[ib];
+        arr[o + 4] = ys[ib];
+        arr[o + 5] = PLANE_Z;
+        // Per-endpoint fade, so a line crossing the headline dims along its
+        // length instead of the whole figure vanishing.
+        const la = strength * visible(xs[ia], ys[ia]) * 0.5;
+        const lb = strength * visible(xs[ib], ys[ib]) * 0.5;
+        col[o] = LINE_R * la;
+        col[o + 1] = LINE_G * la;
+        col[o + 2] = LINE_B * la;
+        col[o + 3] = LINE_R * lb;
+        col[o + 4] = LINE_G * lb;
+        col[o + 5] = LINE_B * lb;
+      });
+      geom.attributes.position.needsUpdate = true;
+      geom.attributes.color.needsUpdate = true;
+      geom.computeBoundingSphere();
+
+    });
+
+    // 5. name the strongest sign only — several glow at once under a generous
+    //    radius, and labelling all of them would be clutter.
+    let best = -1;
+    for (let s = 0; s < ZODIAC.length; s++) {
+      if (hover[s] > 0.42 && (best === -1 || hover[s] > hover[best])) best = s;
+    }
+    const el = labelEl.current;
+    const lg = labelGroup.current;
+    if (el && lg) {
+      if (best === -1) {
+        el.style.opacity = "0";
+      } else {
+        const mine = bySign[best];
+        let cx = 0;
+        let cy = 0;
+        for (const i of mine) {
+          cx += xs[i];
+          cy += ys[i];
+        }
+        lg.position.set(cx / mine.length, cy / mine.length - 0.55, PLANE_Z);
+        el.textContent = ZODIAC[best].label;
+        el.style.opacity = String(
+          THREE.MathUtils.smoothstep(hover[best], 0.42, 0.7) * 0.75,
+        );
+      }
     }
   });
 
   return (
-    <group ref={group}>
+    <group>
       <DeepField texture={texture} />
 
-      {bins.map((geometry, i) => (
+      {built.tierGeoms.map((geometry, i) => (
         <points key={i} geometry={geometry}>
           <pointsMaterial
             map={texture}
-            size={BINS[i].size}
+            size={TIERS[i].size}
             sizeAttenuation
+            vertexColors
             transparent
             depthWrite={false}
-            opacity={BINS[i].opacity}
-            color="#93a3c8"
+            opacity={0.95}
             blending={THREE.AdditiveBlending}
           />
         </points>
       ))}
 
-      <lineSegments geometry={eclipticLine}>
-        <lineBasicMaterial color="#6f7c9c" transparent opacity={0.26} />
-      </lineSegments>
-
-      <lineSegments ref={ariesLines} geometry={aries}>
-        <lineBasicMaterial color="#9fb0d4" transparent opacity={0.32} />
-      </lineSegments>
-
-      {/*
-        The featured sign, boosted but still magnitude-ordered. Multipliers are
-        measured rather than guessed: at a flat 0.52 opacity the brightest Aries
-        star peaked at luminance 92 against the mark's 63, making a background
-        star the brightest thing in the hero.
-      */}
-      {featuredBins.map((geometry, i) => (
-        <points key={`f${i}`} geometry={geometry}>
-          <pointsMaterial
-            map={texture}
-            size={BINS[i].size * 1.35}
-            sizeAttenuation
+      {built.lineGeoms.map((geometry, i) => (
+        <lineSegments key={i} geometry={geometry}>
+          <lineBasicMaterial
+            vertexColors
             transparent
             depthWrite={false}
-            opacity={BINS[i].opacity * 0.9}
-            color="#b9c6e4"
             blending={THREE.AdditiveBlending}
           />
-        </points>
+        </lineSegments>
       ))}
+
+      <group ref={labelGroup}>
+        <Html center pointerEvents="none" zIndexRange={[5, 0]}>
+          <div
+            ref={labelEl}
+            className="label-mono whitespace-nowrap text-[#b9c6e4] opacity-0 transition-opacity duration-300"
+          >
+            {""}
+          </div>
+        </Html>
+      </group>
     </group>
   );
 }

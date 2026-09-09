@@ -29,11 +29,18 @@ export function Hero() {
         <CursorRing containerRef={stage} />
       </div>
 
-      <div className="relative z-10 flex min-h-svh flex-col justify-between page-x pt-[112px] pb-[49px]">
+      {/*
+        pointer-events-none is load-bearing: this layer covers the canvas
+        edge to edge, so without it the scene never sees a pointer event and
+        the parallax, the blast and the constellation reveals are all dead —
+        which is exactly what the captions below were promising. Interactive
+        children opt back in individually.
+      */}
+      <div className="pointer-events-none relative z-10 flex min-h-svh flex-col justify-between page-x pt-[112px] pb-[49px]">
         <div>
           <KineticHeadline prefix={site.hero.prefix} words={site.hero.cycle} />
 
-          <div className="mt-11 flex flex-wrap gap-[22px]">
+          <div className="pointer-events-auto mt-11 flex flex-wrap gap-[22px]">
             {site.footer.links.map((l) => (
               <MonoLink
                 key={l.label}
@@ -51,7 +58,7 @@ export function Hero() {
             <a
               href="#about"
               aria-label="Scroll to next section"
-              className="grid h-5 w-5 place-items-center rounded-full border border-white/30 text-[10px]"
+              className="pointer-events-auto grid h-5 w-5 place-items-center rounded-full border border-white/30 text-[10px]"
             >
               ↓
             </a>

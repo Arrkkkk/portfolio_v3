@@ -106,12 +106,15 @@ function Monogram({ blast }: { blast: React.RefObject<number> }) {
       const mesh = pieces.current[i];
       if (!mesh) return;
       const float = Math.sin(state.clock.elapsedTime * 0.6 + i * 2.1) * 0.012;
+      // Tuned once the overlay stopped swallowing pointer events and this
+      // became visible for the first time: at 0.9 the pieces cleared the
+      // viewport entirely, which loses the mark rather than opening it up.
       mesh.position.set(
-        part.dir.x * b * 0.9,
-        part.dir.y * b * 0.9 + float,
-        seeded(i + 5) * b * 0.5,
+        part.dir.x * b * 0.38,
+        part.dir.y * b * 0.38 + float,
+        seeded(i + 5) * b * 0.3,
       );
-      mesh.rotation.z = b * (seeded(i + 11) - 0.5) * 0.8;
+      mesh.rotation.z = b * (seeded(i + 11) - 0.5) * 0.45;
     });
   });
 

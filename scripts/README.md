@@ -15,5 +15,9 @@ npm run verify                     # mobile / reduced-motion / runtime-error swe
 * `shot.mjs` skips the preloader, sets the scroll offset, then waits for Lenis and
   ScrollTrigger to settle before capturing. Pinned scenes need a `scroll` value inside
   their pinned range; `analysis/FRAME-MAP.md` says which frame each state corresponds to.
+* `/?markTime=<seconds>` freezes the 3D hero monogram at a fixed orientation (pointer term
+  dropped), so the angles where it is hardest to light can be captured deterministically rather
+  than waiting for the swing to land there. `4.62` = positive peak, `13.9` = negative peak,
+  `0` = face-on.
 * Both scripts drive the locally installed Google Chrome (`channel: "chrome"`), so no
   Playwright browser download is required.

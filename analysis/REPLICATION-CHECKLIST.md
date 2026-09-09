@@ -118,6 +118,12 @@ content mapping is the owner's RA monogram — auto-traced from their artwork
 extruded flat logo reads as a blank slab edge-on. The same traced contours drive the header lockup
 and the preloader, so the mark is identical everywhere.
 
+The mark is lit by a procedural `<Environment>` of `<Lightformer>` panels rather than lamps aimed at
+it: at 0.9 metalness it has almost no diffuse response, so its colour is reflected environment and
+aimed lights left it black wherever no face happened to align. Panels surround it, including one on
+the camera side — face-on was a second dead angle, since a mirror pointing at the viewer reflects the
+empty space behind them. Regression-test both with `/?markTime=`.
+
 Known deltas from the reference, accepted for now:
 * The display face is **General Sans**, not PP Neue Montreal — slightly wider, so long
   headlines run ~2% longer than the reference at the same size.

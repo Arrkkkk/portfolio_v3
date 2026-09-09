@@ -121,6 +121,12 @@ they compare 1:1 against `Trion Frames/frame_XXXX.jpg` and the half-res crops in
 See `scripts/README.md`. Then: open the named reference frame → compare geometry / typography /
 colour / motion → list the differences → fix → re-shoot.
 
+**Freezing the hero mark.** `/?markTime=<seconds>` pins the 3D monogram's animation clock and drops
+the pointer term, so a screenshot always reproduces the same orientation. Use it to regression-test
+the angles where a rotating extruded logo is hardest to light — `4.62` is the positive peak of the
+swing, `13.9` the negative one, `0` face-on. Do not judge the mark by whatever angle a screenshot
+happens to catch; both dead angles found so far were missed exactly that way.
+
 Compare specifically: element x/y and width/height, margins and padding, font size / line-height /
 tracking / wrapping, colours and gradients, image crop and radius, and — by scrubbing the reference
 frames — animation direction, order, stagger and end state.

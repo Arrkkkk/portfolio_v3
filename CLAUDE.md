@@ -128,9 +128,22 @@ re-measuring:
 3. **Layer order by brightness.** The deep field is the faintest layer, then catalogued stars by
    magnitude, then the featured sign, then its lines. Brightness must track magnitude: Hamal
    (mag 2.0) leads Aries, not 41 Arietis (mag 3.63).
-4. **Richness comes from density, not level.** ~730 deep-field stars carry only ~9% more total light
-   than the 46 that preceded them, because each one is far fainter. If the sky looks thin, add
-   stars — do not turn the existing ones up.
+4. **Richness comes from density, not level.** Faint stars in quantity beat bright ones. If the sky
+   looks thin, add stars — do not turn the existing ones up.
+5. **The Milky Way is the same field at higher density**, not a layer on top. Stars are sampled
+   against a real galactic model (exponential thin disk, central bulge, Great Rift dust lanes) in
+   galactic coordinates, so the band lands where the galaxy actually is: the plane is inclined ~60°
+   to the ecliptic and crosses it near Sagittarius and Gemini, so the core sweeps through as that
+   sign does. Density alone is not enough — at a subordinate brightness ~1700 visible stars read as
+   scatter, so a very faint unresolved-haze layer carries the glow. Violet is bound to the bulge
+   only; it must never become a tint across the sky.
+
+**Measuring the sky.** Exclude the mark box, the headline block **and the EST badge** — the badge is
+bright UI and silently inflated every sky measurement until it was masked. Total light is the right
+metric for point stars; for the diffuse haze it is misleading, since a low-contrast wash over a wide
+area accumulates a lot of light while staying perceptually subordinate. Current state: away from the
+plane ~3680 lit px (parity with the pre-Milky-Way field), at the core ~7100, and the mark carries
+4.6-8.5x the sky's light even at its dimmest angle.
 
 ## Visual validation loop — mandatory
 
@@ -145,6 +158,10 @@ Screenshots land in `analysis/_shots/` at exactly **1710 × 951**, the reference
 they compare 1:1 against `Trion Frames/frame_XXXX.jpg` and the half-res crops in `analysis/_work/`.
 See `scripts/README.md`. Then: open the named reference frame → compare geometry / typography /
 colour / motion → list the differences → fix → re-shoot.
+
+**Freezing the sky.** `/?skyTime=<seconds>` pins the band's drift independently of `markTime`. The
+galactic core is only in view for part of each cycle, so capturing it otherwise means waiting
+minutes: `skyTime=468` puts the core in frame, `830` puts it well away.
 
 **Freezing the hero mark.** `/?markTime=<seconds>` pins the 3D monogram's animation clock and drops
 the pointer term, so a screenshot always reproduces the same orientation. Use it to regression-test

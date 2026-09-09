@@ -61,6 +61,41 @@ function toEcliptic(ra: number, dec: number) {
   return { lon: ((lon / DEG) + 360) % 360, lat: lat / DEG };
 }
 
+/** Ecliptic (longitude/latitude) back to equatorial (RA/Dec), all in degrees. */
+function toEquatorial(lon: number, lat: number) {
+  const l = lon * DEG;
+  const bt = lat * DEG;
+  const e = OBLIQUITY * DEG;
+
+  const sinDec = Math.sin(bt) * Math.cos(e) + Math.cos(bt) * Math.sin(e) * Math.sin(l);
+  const dec = Math.asin(THREE.MathUtils.clamp(sinDec, -1, 1));
+  const y = -Math.sin(bt) * Math.sin(e) + Math.cos(bt) * Math.cos(e) * Math.sin(l);
+  const x = Math.cos(bt) * Math.cos(l);
+
+  return { ra: ((Math.atan2(y, x) / DEG) + 360) % 360, dec: dec / DEG };
+}
+
+// North galactic pole and the galactic longitude of the north celestial pole, J2000.
+const NGP_RA = 192.85948;
+const NGP_DEC = 27.12825;
+const NCP_L = 122.93192;
+
+/** Equatorial (RA/Dec) to galactic (longitude/latitude), all in degrees. */
+function toGalactic(ra: number, dec: number) {
+  const a = ra * DEG;
+  const d = dec * DEG;
+  const pa = NGP_RA * DEG;
+  const pd = NGP_DEC * DEG;
+
+  const sinB = Math.sin(d) * Math.sin(pd) + Math.cos(d) * Math.cos(pd) * Math.cos(a - pa);
+  const b = Math.asin(THREE.MathUtils.clamp(sinB, -1, 1));
+  const y = Math.cos(d) * Math.sin(a - pa);
+  const x = Math.sin(d) * Math.cos(pd) - Math.cos(d) * Math.sin(pd) * Math.cos(a - pa);
+  const l = NCP_L * DEG - Math.atan2(y, x);
+
+  return { l: (((l / DEG) % 360) + 360) % 360, b: b / DEG };
+}
+
 // --- Placement -------------------------------------------------------------
 // A cylindrical projection: ecliptic longitude along the band, latitude across
 // it, the whole thing tilted so it reads as a diagonal rather than a horizon.
@@ -143,6 +178,23 @@ function textMask(ndcX: number, ndcY: number) {
   return THREE.MathUtils.smoothstep(outside, 0, TEXT_FEATHER);
 }
 
+/**
+ * `?skyTime=<seconds>` pins the band's drift, independently of `?markTime`
+ * which pins the mark's swing. The galactic core is only in view for part of
+ * each cycle, so capturing it otherwise means waiting minutes for it to come
+ * round. centre = LON_CENTRE + t * DRIFT, so the core (ecliptic longitude ~267°)
+ * arrives at t ≈ 568.
+ */
+function useSkyTime() {
+  return useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const raw = new URLSearchParams(window.location.search).get("skyTime");
+    if (raw === null) return null;
+    const t = Number(raw);
+    return Number.isFinite(t) ? t : null;
+  }, []);
+}
+
 /** Brightness from apparent magnitude — brighter stars carry more light. */
 const lumFor = (mag: number) => THREE.MathUtils.clamp(1.15 - 0.19 * mag, 0.22, 1);
 
@@ -172,75 +224,212 @@ const TIERS = [
 // --- Deep field ------------------------------------------------------------
 
 /**
- * The anonymous dusting a real sky has behind its named stars. Density is what
- * makes this read as sky; each star is individually very faint, so the visual
- * mass stays low because each lights almost nothing, not because there are few.
+ * The anonymous sky behind the named stars — and the Milky Way, which is the
+ * same thing at higher density rather than a separate layer painted on top.
  *
- * Generated in band coordinates and tiled along the band, so the same drift
- * that carries the zodiac carries the background with it and wraps seamlessly.
+ * Stars are drawn from a real density model: an exponential thin disk in
+ * galactic latitude, a bulge toward the galactic centre, and the Great Rift as
+ * dust lanes subtracting light along the plane. Positions are sampled in
+ * ecliptic coordinates and accepted against that model, so the band lands where
+ * the galaxy actually is. The plane is inclined ~60° to the ecliptic and crosses
+ * it near Sagittarius and Gemini, so the core sweeps through as the sign does —
+ * it is genuinely part of the zodiac rather than a backdrop.
+ *
+ * Positions are reprojected each frame, like the constellations, so the field
+ * drifts with the band instead of needing its own tiling.
  */
-const FIELD_PERIOD = 30;
+
+/** Density floor away from the plane — the sky is never empty. */
+const HALO = 0.155;
+/** How many stars to accept. Candidates are drawn until this many pass. */
+// Restores the density of the field this replaced: spreading the same count
+// over a full 360° of longitude left the open sky visibly sparser than before.
+const FIELD_COUNT = 7400;
+/** Ecliptic latitude sampled, slightly beyond what the viewport can show. */
+const FIELD_LAT = 26;
+
 const FIELD_TIERS = [
-  { count: 700, size: 0.045 },
-  { count: 230, size: 0.075 },
-  { count: 60, size: 0.11 },
+  { size: 0.11, share: 0.06 },
+  { size: 0.075, share: 0.23 },
+  { size: 0.045, share: 0.71 },
 ];
 
+/**
+ * Unresolved haze. Density alone does not make a Milky Way: at a brightness
+ * that stays subordinate to the mark, ~1700 visible stars read as scatter, not
+ * as cloud — the real band is mostly light that never resolves into countable
+ * points. These are large, very faint sprites that accumulate into the glow,
+ * sampled on the luminous disk only so they never spread across the open sky.
+ */
+const HAZE_COUNT = 5000;
+const HAZE_SIZE = 0.85;
+
+/** Violet only where the core is — never a tint across the whole sky. */
+const VIOLET_R = 0.72;
+const VIOLET_G = 0.55;
+const VIOLET_B = 0.95;
+
+/**
+ * Relative star density at a galactic position, plus how much of that comes
+ * from the bulge — which is what the violet is bound to.
+ */
+function galacticDensity(l: number, b: number) {
+  const absB = Math.abs(b);
+  const dl = Math.abs(wrap180(l));
+
+  const disk = Math.exp(-absB / 6.5);
+  const bulge = Math.exp(-dl / 26) * Math.exp(-absB / 13);
+  const bright = disk * 0.85 + bulge * 0.9;
+
+  // The Great Rift: a dust lane wandering along the plane, heaviest toward the
+  // core. It bisects the band, which is what gives the real thing its shape.
+  const lr = l * DEG;
+  const riftCentre = 1.1 * Math.sin(lr * 1.3 + 0.4) + 0.7 * Math.sin(lr * 2.9 + 1.7);
+  const riftWidth = 2.4 + 1.1 * Math.sin(lr * 0.8);
+  const t = (b - riftCentre) / riftWidth;
+  const dust = Math.exp(-t * t) * (0.5 + 0.35 * Math.exp(-dl / 45));
+
+  return { weight: HALO + bright * (1 - dust), core: bulge };
+}
+
+function buildDeepField() {
+  let seed = 900;
+  const rand = () => seeded(seed++);
+
+  const lonsBy: number[][] = FIELD_TIERS.map(() => []);
+  const latsBy: number[][] = FIELD_TIERS.map(() => []);
+  const colsBy: number[][] = FIELD_TIERS.map(() => []);
+  const zsBy: number[][] = FIELD_TIERS.map(() => []);
+
+  let accepted = 0;
+  let guard = 0;
+  while (accepted < FIELD_COUNT && guard < FIELD_COUNT * 40) {
+    guard++;
+    const lon = rand() * 360;
+    const lat = (rand() - 0.5) * 2 * FIELD_LAT;
+    const { ra, dec } = toEquatorial(lon, lat);
+    const { l, b } = toGalactic(ra, dec);
+    const { weight, core } = galacticDensity(l, b);
+    if (rand() > weight) continue;
+    accepted++;
+
+    const pick = rand();
+    const tier = pick < FIELD_TIERS[0].share ? 0
+      : pick < FIELD_TIERS[0].share + FIELD_TIERS[1].share ? 1
+      : 2;
+
+    // Brightness is a property of the star, not of where it sits: density
+    // carries the Milky Way, so the same power law applies everywhere.
+    const lum = 0.1 + Math.pow(rand(), 2.4) * 0.9;
+    const warm = Math.pow(rand(), 3);
+    const baseR = 0.66 + warm * 0.34;
+    const baseG = 0.73 + warm * 0.19;
+    const baseB = 0.92 - warm * 0.16;
+
+    const violet = THREE.MathUtils.clamp(core * 1.3, 0, 1) * 0.32;
+    colsBy[tier].push(
+      THREE.MathUtils.lerp(baseR, VIOLET_R, violet) * lum,
+      THREE.MathUtils.lerp(baseG, VIOLET_G, violet) * lum,
+      THREE.MathUtils.lerp(baseB, VIOLET_B, violet) * lum,
+    );
+    lonsBy[tier].push(lon);
+    latsBy[tier].push(lat);
+    zsBy[tier].push(-1.6 - rand() * 7.4);
+  }
+
+  // Haze, sampled on the disk component alone — the halo floor is resolved
+  // stars, not glow, so it must not carry haze into the empty sky.
+  const hazeLons: number[] = [];
+  const hazeLats: number[] = [];
+  const hazeZs: number[] = [];
+  const hazeCols: number[] = [];
+  let hazeGuard = 0;
+  while (hazeLons.length < HAZE_COUNT && hazeGuard < HAZE_COUNT * 60) {
+    hazeGuard++;
+    const lon = rand() * 360;
+    const lat = (rand() - 0.5) * 2 * FIELD_LAT;
+    const { ra, dec } = toEquatorial(lon, lat);
+    const { l, b } = toGalactic(ra, dec);
+    const { weight, core } = galacticDensity(l, b);
+    const glow = Math.max(0, weight - HALO) / (1 - HALO);
+    if (rand() > glow) continue;
+
+    // Faint enough that only heavy overlap registers: sparse large sprites
+    // read as lens smudges, many small ones merge into cloud.
+    const lum = 0.017 + core * 0.015;
+    const violet = THREE.MathUtils.clamp(core * 1.3, 0, 1) * 0.32;
+    hazeCols.push(
+      THREE.MathUtils.lerp(0.7, VIOLET_R, violet) * lum,
+      THREE.MathUtils.lerp(0.76, VIOLET_G, violet) * lum,
+      THREE.MathUtils.lerp(0.92, VIOLET_B, violet) * lum,
+    );
+    hazeLons.push(lon);
+    hazeLats.push(lat);
+    hazeZs.push(-4.5 - rand() * 2);
+  }
+
+  const tiers = FIELD_TIERS.map((tier, i) => {
+    const n = lonsBy[i].length;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(colsBy[i]), 3));
+    return {
+      geometry,
+      size: tier.size,
+      lons: new Float32Array(lonsBy[i]),
+      lats: new Float32Array(latsBy[i]),
+      zs: new Float32Array(zsBy[i]),
+    };
+  });
+
+  const hazeGeom = new THREE.BufferGeometry();
+  hazeGeom.setAttribute(
+    "position",
+    new THREE.BufferAttribute(new Float32Array(hazeLons.length * 3), 3),
+  );
+  hazeGeom.setAttribute("color", new THREE.BufferAttribute(new Float32Array(hazeCols), 3));
+  tiers.push({
+    geometry: hazeGeom,
+    size: HAZE_SIZE,
+    lons: new Float32Array(hazeLons),
+    lats: new Float32Array(hazeLats),
+    zs: new Float32Array(hazeZs),
+  });
+
+  return tiers;
+}
+
 function DeepField({ texture }: { texture: THREE.Texture }) {
-  const group = useRef<THREE.Group>(null);
+  const tiers = useMemo(() => buildDeepField(), []);
+  const v = useMemo(() => new THREE.Vector2(), []);
+  const frozen = useSkyTime();
 
-  const tiers = useMemo(() => {
-    let seed = 900;
-    return FIELD_TIERS.map(({ count }) => {
-      // two tiles, so translating by up to one period always leaves cover
-      const total = count * 2;
-      const pos = new Float32Array(total * 3);
-      const col = new Float32Array(total * 3);
-      for (let i = 0; i < count; i++) {
-        const bandX = seeded(seed++) * FIELD_PERIOD;
-        const bandY = (seeded(seed++) - 0.5) * 15;
-        const z = -1.6 - seeded(seed++) * 7.4;
-        const b = 0.1 + Math.pow(seeded(seed++), 2.4) * 0.9;
-        const warm = Math.pow(seeded(seed++), 3);
-        const r = b * (0.66 + warm * 0.34);
-        const g = b * (0.73 + warm * 0.19);
-        const bl = b * (0.92 - warm * 0.16);
-
-        for (const tile of [0, 1]) {
-          const j = (i + tile * count) * 3;
-          const bx = bandX + tile * FIELD_PERIOD;
-          pos[j] = bx * tiltCos - bandY * tiltSin;
-          pos[j + 1] = bx * tiltSin + bandY * tiltCos;
-          pos[j + 2] = z;
-          col[j] = r;
-          col[j + 1] = g;
-          col[j + 2] = bl;
-        }
-      }
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      geometry.setAttribute("color", new THREE.BufferAttribute(col, 3));
-      return geometry;
-    });
-  }, []);
-
-  useEffect(() => () => tiers.forEach((g) => g.dispose()), [tiers]);
+  useEffect(() => () => tiers.forEach((t) => t.geometry.dispose()), [tiers]);
 
   useFrame((state) => {
-    const g = group.current;
-    if (!g) return;
-    const along = state.clock.elapsedTime * DRIFT_DEG_PER_SEC * SCALE;
-    const wrapped = -(along % FIELD_PERIOD) - FIELD_PERIOD * 0.5;
-    g.position.set(wrapped * tiltCos, wrapped * tiltSin, 0);
+    const centre =
+      LON_CENTRE + (frozen ?? state.clock.elapsedTime) * DRIFT_DEG_PER_SEC;
+    for (const tier of tiers) {
+      const arr = tier.geometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < tier.lons.length; i++) {
+        projectInto(v, wrap180(tier.lons[i] - centre), tier.lats[i]);
+        const j = i * 3;
+        arr[j] = v.x;
+        arr[j + 1] = v.y;
+        arr[j + 2] = tier.zs[i];
+      }
+      tier.geometry.attributes.position.needsUpdate = true;
+      tier.geometry.computeBoundingSphere();
+    }
   });
 
   return (
-    <group ref={group}>
-      {tiers.map((geometry, i) => (
-        <points key={i} geometry={geometry}>
+    <group>
+      {tiers.map((tier, i) => (
+        <points key={i} geometry={tier.geometry}>
           <pointsMaterial
             map={texture}
-            size={FIELD_TIERS[i].size}
+            size={tier.size}
             sizeAttenuation
             vertexColors
             transparent
@@ -332,6 +521,7 @@ export function ConstellationField() {
   const labelEl = useRef<HTMLDivElement>(null);
 
   const built = useMemo(() => buildField(), []);
+  const frozenSky = useSkyTime();
   const scratch = useMemo(
     () => ({
       v: new THREE.Vector2(),
@@ -358,7 +548,8 @@ export function ConstellationField() {
     const { stars, tierGeoms, lineGeoms, bySign, featured, refLons } = built;
     const { v, xs, ys, hover, base } = scratch;
 
-    const centre = LON_CENTRE + state.clock.elapsedTime * DRIFT_DEG_PER_SEC;
+    const centre =
+      LON_CENTRE + (frozenSky ?? state.clock.elapsedTime) * DRIFT_DEG_PER_SEC;
 
     // 1. place each sign as a rigid figure, then its stars relative to it
     for (let s = 0; s < refLons.length; s++) base[s] = wrap180(refLons[s] - centre);

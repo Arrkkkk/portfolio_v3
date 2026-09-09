@@ -117,10 +117,12 @@ as a shape.
 It is deliberately subordinate to the mark, and three rules keep it there. Do not relax them without
 re-measuring:
 
-1. **Brightness budget.** No sky pixel may exceed the mark's brightest chamfer highlight. Verify
-   numerically from a screenshot rather than by eye — this was violated twice during the build, once
-   by the featured stars and once by the deep-field motes, and neither was obvious visually. Current
-   headroom is about +7 luminance.
+1. **Visual mass, not peak brightness.** Stars may out-peak the mark — in a real sky they are the
+   brightest points in frame, and that is what makes them read as stars. What keeps the sky
+   subordinate is how little of the frame it lights. Measure that, not peaks: currently the mark
+   carries ~4.5× the sky's total light and lights ~16% of its own area against the sky's ~0.5%.
+   An earlier version capped peak brightness below the mark's and was invisible on a dimmed laptop
+   screen — a rigorous-sounding metric optimised to the point of deleting the feature.
 2. **Clear zone.** Stars within a screen-space radius of the mark are dropped, not dimmed, so it
    always sits in empty sky.
 3. **Layer order by brightness.** Deep-field motes are the faintest layer, then catalogued stars by

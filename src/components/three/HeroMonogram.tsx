@@ -197,10 +197,9 @@ function Motes() {
         sizeAttenuation
         transparent
         depthWrite={false}
-        // The deep field is the faintest layer by definition. At 0.55 it was
-        // out-shining the catalogued zodiac stars in front of it, and was the
-        // brightest thing in the hero after the mark's own highlights.
-        opacity={0.32}
+        // The deep field stays the faintest layer — it must sit below the
+        // catalogued zodiac stars in front of it, not above them.
+        opacity={0.4}
         color="#c2ccdf"
         blending={THREE.AdditiveBlending}
       />

@@ -13,9 +13,12 @@ import { FEATURED_SIGN, ZODIAC } from "./zodiacData";
  * Everything here is subordinate to the monogram. Three rules keep it that
  * way, and they are the reason this reads as depth rather than decoration:
  *
- *   1. Brightness budget. The mark's brightest chamfer highlights sit near
- *      #8a94ad; stars peak well below that and lines sit at single-digit
- *      opacity, so nothing in the sky ever out-values the mark.
+ *   1. Visual mass, not peak brightness. Stars are allowed to out-peak the
+ *      mark — in a real sky they are the brightest points in frame, and that
+ *      is what makes them read as stars. What keeps the sky subordinate is how
+ *      little of the frame it lights: a sparse scatter of points against a
+ *      large, continuously modelled object. An earlier version capped peak
+ *      brightness below the mark's and was invisible on a dimmed laptop.
  *   2. A clear zone. Stars fade out within a screen-space radius of the mark,
  *      so it always sits in empty sky and never picks up a busy halo.
  *   3. Cool greys only. The ember stays the mark's alone.
@@ -121,9 +124,9 @@ function useStarTexture() {
  * Points objects rather than one buffer.
  */
 const BINS = [
-  { max: 2.5, size: 0.13, opacity: 0.28 },
-  { max: 3.5, size: 0.085, opacity: 0.22 },
-  { max: Infinity, size: 0.055, opacity: 0.16 },
+  { max: 2.5, size: 0.17, opacity: 0.62 },
+  { max: 3.5, size: 0.115, opacity: 0.48 },
+  { max: Infinity, size: 0.075, opacity: 0.34 },
 ];
 
 export function ConstellationField() {
@@ -220,7 +223,7 @@ export function ConstellationField() {
       const d = Math.hypot(px - ariesCentre.x, py - ariesCentre.y);
       const near = 1 - THREE.MathUtils.smoothstep(d, 1.2, 4);
       const mat = line.material as THREE.LineBasicMaterial;
-      mat.opacity = THREE.MathUtils.lerp(mat.opacity, 0.13 + near * 0.17, 0.08);
+      mat.opacity = THREE.MathUtils.lerp(mat.opacity, 0.32 + near * 0.3, 0.08);
     }
 
     // A shallow counter-drift against the pointer separates the sky from the
@@ -250,11 +253,11 @@ export function ConstellationField() {
       ))}
 
       <lineSegments geometry={eclipticLine}>
-        <lineBasicMaterial color="#5c6784" transparent opacity={0.11} />
+        <lineBasicMaterial color="#6f7c9c" transparent opacity={0.26} />
       </lineSegments>
 
       <lineSegments ref={ariesLines} geometry={aries}>
-        <lineBasicMaterial color="#8fa0c4" transparent opacity={0.13} />
+        <lineBasicMaterial color="#9fb0d4" transparent opacity={0.32} />
       </lineSegments>
 
       {/*
@@ -271,7 +274,7 @@ export function ConstellationField() {
             sizeAttenuation
             transparent
             depthWrite={false}
-            opacity={BINS[i].opacity * 0.85}
+            opacity={BINS[i].opacity * 0.9}
             color="#b9c6e4"
             blending={THREE.AdditiveBlending}
           />

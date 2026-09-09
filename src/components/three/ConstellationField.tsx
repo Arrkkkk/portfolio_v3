@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { FEATURED_SIGN, ZODIAC } from "./zodiacData";
+import { seeded } from "@/lib/utils";
 
 /**
  * The hero's sky: the twelve zodiac constellations strung along a true
@@ -129,6 +130,84 @@ const BINS = [
   { max: Infinity, size: 0.075, opacity: 0.34 },
 ];
 
+/**
+ * The deep field: the anonymous dusting a real sky has behind its named stars.
+ *
+ * Density is what makes this read as sky rather than as a handful of dots, so
+ * there are a lot of them and they are individually very faint — the visual
+ * mass stays low because each star lights almost nothing, not because there
+ * are few. Per-star brightness and colour temperature come from vertex colours
+ * (PointsMaterial supports those even though it ignores per-vertex size), with
+ * a power-law distribution so the great majority sit near the threshold and
+ * only a handful carry any weight.
+ *
+ * Split into size tiers because size is per-draw-call. Everything is seeded, so
+ * the sky composes identically on every load.
+ */
+const FIELD_TIERS = [
+  { count: 520, size: 0.045, spread: 1.0 },
+  { count: 170, size: 0.075, spread: 0.9 },
+  { count: 44, size: 0.11, spread: 0.8 },
+];
+
+function DeepField({ texture }: { texture: THREE.Texture }) {
+  const group = useRef<THREE.Group>(null);
+
+  const tiers = useMemo(() => {
+    let seed = 900;
+    return FIELD_TIERS.map(({ count, spread }) => {
+      const pos = new Float32Array(count * 3);
+      const col = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        pos[i * 3] = (seeded(seed++) - 0.5) * 22 * spread;
+        pos[i * 3 + 1] = (seeded(seed++) - 0.5) * 12.4 * spread;
+        // Depth spread gives the pointer drift something to parallax against.
+        // All behind the mark, so the mark's own depth test occludes them.
+        pos[i * 3 + 2] = -1.6 - seeded(seed++) * 7.4;
+
+        // Power law: most stars sit just above the threshold.
+        const b = 0.1 + Math.pow(seeded(seed++), 2.4) * 0.9;
+        // Colour temperature — mostly cool, occasionally warm, as a real field.
+        const warm = Math.pow(seeded(seed++), 3);
+        col[i * 3] = b * (0.66 + warm * 0.34);
+        col[i * 3 + 1] = b * (0.73 + warm * 0.19);
+        col[i * 3 + 2] = b * (0.92 - warm * 0.16);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      return g;
+    });
+  }, []);
+
+  useEffect(() => () => tiers.forEach((g) => g.dispose()), [tiers]);
+
+  useFrame((state) => {
+    if (group.current) {
+      group.current.rotation.z = state.clock.elapsedTime * 0.004;
+    }
+  });
+
+  return (
+    <group ref={group}>
+      {tiers.map((geometry, i) => (
+        <points key={i} geometry={geometry}>
+          <pointsMaterial
+            map={texture}
+            size={FIELD_TIERS[i].size}
+            sizeAttenuation
+            vertexColors
+            transparent
+            depthWrite={false}
+            opacity={0.85}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+      ))}
+    </group>
+  );
+}
+
 export function ConstellationField() {
   const texture = useStarTexture();
   const group = useRef<THREE.Group>(null);
@@ -237,6 +316,8 @@ export function ConstellationField() {
 
   return (
     <group ref={group}>
+      <DeepField texture={texture} />
+
       {bins.map((geometry, i) => (
         <points key={i} geometry={geometry}>
           <pointsMaterial

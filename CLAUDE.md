@@ -125,9 +125,12 @@ re-measuring:
    screen — a rigorous-sounding metric optimised to the point of deleting the feature.
 2. **Clear zone.** Stars within a screen-space radius of the mark are dropped, not dimmed, so it
    always sits in empty sky.
-3. **Layer order by brightness.** Deep-field motes are the faintest layer, then catalogued stars by
+3. **Layer order by brightness.** The deep field is the faintest layer, then catalogued stars by
    magnitude, then the featured sign, then its lines. Brightness must track magnitude: Hamal
    (mag 2.0) leads Aries, not 41 Arietis (mag 3.63).
+4. **Richness comes from density, not level.** ~730 deep-field stars carry only ~9% more total light
+   than the 46 that preceded them, because each one is far fainter. If the sky looks thin, add
+   stars — do not turn the existing ones up.
 
 ## Visual validation loop — mandatory
 

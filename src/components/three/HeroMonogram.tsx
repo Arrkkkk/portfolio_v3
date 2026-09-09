@@ -141,73 +141,6 @@ function Monogram({ blast }: { blast: React.RefObject<number> }) {
 
 
 /**
- * Bokeh motes at mixed depths. They give the empty black volume some spatial
- * read and, being self-lit, they keep the frame from going fully dead at any
- * angle. Positions are seeded so every render composes identically.
- */
-function Motes() {
-  const texture = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 64;
-    const ctx = c.getContext("2d")!;
-    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.25, "rgba(255,255,255,0.5)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 64, 64);
-    return new THREE.CanvasTexture(c);
-  }, []);
-
-  const geometry = useMemo(() => {
-    const count = 46;
-    const pos = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      pos[i * 3] = (seeded(i + 101) - 0.5) * 11;
-      pos[i * 3 + 1] = (seeded(i + 201) - 0.5) * 7;
-      // kept behind the mark: near the camera, size attenuation blows them up
-      // into lens-smudge blurs over the headline.
-      pos[i * 3 + 2] = -0.8 - seeded(i + 301) * 4.5;
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    return g;
-  }, []);
-
-  const points = useRef<THREE.Points>(null);
-
-  useEffect(() => {
-    return () => {
-      texture.dispose();
-      geometry.dispose();
-    };
-  }, [texture, geometry]);
-
-  useFrame((state) => {
-    if (points.current) {
-      points.current.rotation.y = state.clock.elapsedTime * 0.012;
-    }
-  });
-
-  return (
-    <points ref={points} geometry={geometry}>
-      <pointsMaterial
-        map={texture}
-        size={0.09}
-        sizeAttenuation
-        transparent
-        depthWrite={false}
-        // The deep field stays the faintest layer — it must sit below the
-        // catalogued zodiac stars in front of it, not above them.
-        opacity={0.4}
-        color="#c2ccdf"
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
-  );
-}
-
-/**
  * Owns the blast state: R3F hooks only exist below <Canvas>, and the component
  * that mutates the value has to be the one that owns it.
  */
@@ -321,7 +254,6 @@ function Scene() {
       <pointLight position={[3.1, -2.2, 2.4]} intensity={4} distance={10} color="#e2521f" />
       <Monogram blast={blast} />
       <ConstellationField />
-      <Motes />
     </>
   );
 }

@@ -1,0 +1,28 @@
+import { Hero } from "@/components/home/Hero";
+import { Statement } from "@/components/home/Statement";
+import { MarqueeBand } from "@/components/home/MarqueeBand";
+import { KeyFacts } from "@/components/home/KeyFacts";
+import { SelectedWork } from "@/components/home/SelectedWork";
+import { CollectionCta } from "@/components/home/CollectionCta";
+import { ServicesScene } from "@/components/home/ServicesScene";
+import { ClientStories } from "@/components/home/ClientStories";
+import { DesignInMotion } from "@/components/home/DesignInMotion";
+import { FooterCta } from "@/components/home/FooterCta";
+
+/** Home — chapter order per analysis/PAGES.md. */
+export default function Home() {
+  return (
+    <>
+      <Hero />
+      <Statement />
+      <MarqueeBand />
+      <KeyFacts />
+      <SelectedWork />
+      <CollectionCta />
+      <ServicesScene />
+      <ClientStories />
+      <DesignInMotion />
+      <FooterCta />
+    </>
+  );
+}

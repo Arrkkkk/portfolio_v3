@@ -439,22 +439,41 @@ function DeepField({ texture }: { texture: THREE.Texture }) {
  * sits where the galaxy actually does and drifts with everything else.
  */
 
-const MW_LAT = 24; // galactic latitude the ribbon spans, degrees
+/**
+ * Latitude the ribbon spans, degrees. The visible field is roughly ±24° tall,
+ * so at 24 the ribbon's own edge landed inside the frame and read as a hard
+ * boundary running the width of the page. Wider than the frame, there is no
+ * edge to see.
+ */
+const MW_LAT = 40;
 const MW_SEGS_L = 240;
-const MW_SEGS_B = 16;
+const MW_SEGS_B = 26;
 const MW_Z = -5.2;
 
-/** Smooth value noise, and fBm over it — enough for a soft cloud. */
-function noise2(x: number, y: number) {
+/**
+ * Smooth value noise, periodic in x. The period matters twice over: it keeps
+ * the texture from seaming where longitude wraps 360 to 0, and it lets the
+ * clump scale be chosen in whole degrees.
+ */
+function noise2(x: number, y: number, periodX: number) {
   const xi = Math.floor(x);
   const yi = Math.floor(y);
   const xf = x - xi;
   const yf = y - yi;
   const sx = xf * xf * (3 - 2 * xf);
   const sy = yf * yf * (3 - 2 * yf);
+  // Integer bit-mix, not the usual fract(sin(dot(p, k))) trick. That hash is a
+  // plane wave sampled on a lattice: neighbouring cells whose dot products land
+  // a whole period apart get near-identical values, so the field correlates
+  // along one fixed diagonal and the noise comes out as long parallel smears.
+  // Those smears were the streaks across the hero.
   const h = (a: number, b: number) => {
-    const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-    return n - Math.floor(n);
+    const ax = ((a % periodX) + periodX) % periodX;
+    let s = Math.imul(ax | 0, 0x27d4eb2d) ^ Math.imul((b + 4096) | 0, 0x165667b1);
+    s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d);
+    s = Math.imul(s ^ (s >>> 12), 0x297a2d39);
+    s ^= s >>> 15;
+    return (s >>> 0) / 4294967296;
   };
   const a = h(xi, yi);
   const b = h(xi + 1, yi);
@@ -463,12 +482,12 @@ function noise2(x: number, y: number) {
   return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
 
-function fbm(x: number, y: number, octaves = 5) {
+function fbm(x: number, y: number, periodX: number, octaves = 5) {
   let v = 0;
   let amp = 0.5;
   let f = 1;
   for (let i = 0; i < octaves; i++) {
-    v += noise2(x * f, y * f) * amp;
+    v += noise2(x * f, y * f, periodX * f) * amp;
     f *= 2;
     amp *= 0.5;
   }
@@ -491,25 +510,34 @@ function createMilkyWayTexture() {
       const l = ((x + 0.5) / W) * 360;
       const dl = Math.abs(wrap180(l));
 
-      // Concentrated: a narrow bright core with a fainter wide halo, rather
-      // than one broad falloff. Spread thin the band reads as fog; concentrated
-      // it reads as a band with edges.
-      const core = Math.exp(-((b / 5.5) ** 2));
-      const halo = Math.exp(-((b / 13) ** 2)) * 0.35;
-      const bulge = Math.exp(-((dl / 30) ** 2)) * Math.exp(-((b / 11) ** 2));
-      let v = core * 0.75 + halo + bulge * 0.9;
+      // No narrow core. Anything that depends on latitude alone is, by
+      // construction, a stripe running the full length of the band — a bright
+      // core plus a halo draws several of them, nested, and that is what the
+      // streaks across the page actually were. This falloff is wide enough that
+      // it never varies much within the frame: it contributes a level, not a
+      // shape. All visible structure comes from the isotropic clumping below.
+      const wash = Math.exp(-((b / 34) ** 2));
+      const bulge = Math.exp(-((dl / 34) ** 2)) * Math.exp(-((b / 24) ** 2));
+      let v = wash * 0.55 + bulge * 0.5;
 
-      // Clumping, with enough range to give real star clouds rather than a
-      // smooth smear. Structure is what identifies the thing.
-      v *= 0.28 + 1.15 * fbm(l / 9, (b + MW_LAT) / 5);
+      // Isotropic clumping — the same degrees per noise unit on both axes, at
+      // three scales so the cloud has large soft masses as well as fine grain.
+      // Scales are chosen to divide 360 so the lattice wraps without a seam.
+      const clump =
+        0.5 * fbm(l / 12, b / 12, 30) +
+        0.32 * fbm(l / 6 + 17, b / 6 + 17, 60) +
+        0.18 * fbm(l / 2.4 + 31, b / 2.4 + 31, 150);
+      v *= 0.08 + 2.3 * clump;
 
-      // Dust lanes: the Great Rift, wandering along the plane and cutting deep.
-      const lr = l * DEG;
-      const riftCentre = 1.6 * Math.sin(lr * 1.3 + 0.4) + 1.0 * Math.sin(lr * 2.9 + 1.7);
-      const riftWidth = 3.0 + 1.4 * Math.sin(lr * 0.8);
-      const t = (b - riftCentre) / riftWidth;
-      const rift = Math.exp(-t * t) * (0.72 + 0.25 * Math.exp(-((dl / 55) ** 2)));
-      v *= 1 - rift * (0.7 + 0.3 * fbm(l / 5 + 40, b / 3 + 40));
+      // Dust as patches rather than a lane. The Great Rift is a real continuous
+      // feature, but drawn across a band this wide it reads as one long smear,
+      // which is exactly the artefact being removed here.
+      const dust = THREE.MathUtils.smoothstep(
+        fbm(l / 4.5 + 40, b / 4.5 + 40, 80),
+        0.40,
+        0.80,
+      );
+      v *= 1 - dust * 0.72;
 
       // Contrast curve: push the gaps down so the clouds stand out, instead of
       // lifting everything and washing the hero.
@@ -632,7 +660,7 @@ function MilkyWay({ skyHover }: { skyHover: React.RefObject<number> }) {
         map={built.texture}
         vertexColors
         transparent
-        opacity={0.115}
+        opacity={0.075}
         depthWrite={false}
         side={THREE.DoubleSide}
         blending={THREE.AdditiveBlending}

@@ -138,14 +138,32 @@ re-measuring:
 
    Do not rebuild the glow out of sprites. That was tried twice: accumulating soft points cannot
    look smooth, because the overlap needed to blend them makes each one individually visible first,
-   and it came out as cotton wool. One ribbon with a procedural cloud texture — fBm clumping, Great
-   Rift dust lanes cut into it — is both smoother and far cheaper.
+   and it came out as cotton wool. One ribbon with a procedural cloud texture — fBm clumping, dust
+   patches cut into it — is both smoother and far cheaper.
 
-   **Apparency comes from concentration, contrast and colour — not from opacity.** The band was
-   once invisible in practice, and the fix was not brightness: a narrow bright core with a fainter
-   halo instead of one broad falloff, a contrast curve pushing the gaps down so the star clouds
-   stand out, and colour doing the identifying (violet through the band, amber confined to the
-   bulge — the real core is yellowed by dust). Amber must stay tight; reusing the bulge's own
+   **No streaks. Nothing in the texture may be a long parallel line.** This was the single hardest
+   note to satisfy and it had three independent causes, all of which have to stay fixed:
+
+   * *Latitude-only brightness profiles are stripes by construction.* A narrow bright core plus a
+     wider halo draws several nested bands running the full length of the ribbon, which on a
+     diagonal band is exactly "streaks of colour across the page". Use one very wide `wash`
+     (`b/34`) that barely varies inside the frame plus a longitude-localised `bulge` — a blob, not
+     a line — and let the clumping carry all visible shape.
+   * *The ribbon's own edge.* At `MW_LAT = 24` the band ended inside the ~±24° visible field and its
+     boundary read as a hard line. `MW_LAT = 40` puts the edge off-frame.
+   * *`fract(sin(dot(p, k)) * big)` is not a hash.* It is a plane wave sampled on a lattice, so
+     cells whose dot product differs by a period get near-identical values and the field correlates
+     along one fixed diagonal — long parallel smears, independent of feature scale. `noise2` uses an
+     integer bit-mix instead. Do not put the sine hash back.
+
+   Clump noise must be **isotropic**: the same degrees per noise unit on both axes. Sampling
+   longitude coarser than latitude stretches every feature along the band. Noise scales must divide
+   360 so the lattice wraps without a seam at longitude 0.
+
+   **Apparency comes from contrast and colour — not from opacity.** The band was once invisible in
+   practice, and the fix was not brightness: a contrast curve pushing the gaps down so the star
+   clouds stand out, and colour doing the identifying (violet through the band, amber confined to
+   the bulge — the real core is yellowed by dust). Amber must stay tight; reusing the bulge's own
    brightness falloff for it spread warm over everything and the violet never showed.
 
    The mark's protection is **local**. The ribbon has its own wider, softer moat
@@ -155,7 +173,8 @@ re-measuring:
    Judge the level by **diffuse level** (16px box-average peak, currently ~44 at the core against
    the mark's ~62), never by total light — a wide low-contrast wash accumulates enormous total
    light while staying perceptually subordinate. Opacity is steeply nonlinear: 0.5 obliterated the
-   hero, 0.115 is right.
+   hero. It also has to be re-tuned whenever the ribbon's coverage changes — widening `MW_LAT` to
+   40 to hide the band edge meant dropping opacity 0.115 → 0.075 to hold the same level.
 
 **Measuring the sky.** Exclude the mark box, the headline block **and the EST badge** — the badge is
 bright UI and silently inflated every sky measurement until it was masked. Total light is the right

@@ -17,8 +17,8 @@ export const site = {
 
   hero: {
     /** Static prefix + the words that cycle (A03). */
-    prefix: "Designed to",
-    cycle: ["mean something.", "feel effortless.", "ship fast."], // TODO confirm
+    prefix: "Built to",
+    cycle: ["learn.", "experiment.", "evolve."],
     badge: { left: "EST. 2021", right: "5+ YEARS BUILDING FOR THE WEB." }, // TODO confirm
     blurb:
       "Interfaces, products and systems built for clarity, scale and impact.", // TODO confirm

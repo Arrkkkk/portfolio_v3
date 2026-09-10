@@ -252,4 +252,13 @@ contact details — ask the owner.
   the monolith and gallery use original geometry and procedural textures — no reference assets.
 * The hero mark **swings within ±35° rather than spinning 360°**: an extruded flat logo reads as a
   blank slab edge-on, and the identity has to stay legible.
+* The mark's material is `metalness={1}` with **no ambient/directional/point lights** — only the
+  Lightformer environment lights it. Any of those ordinary lights adds a flat, angle-independent grey
+  wash on top of the reflection (there is no diffuse surface left at metalness 1 for them to paint
+  onto anything else), which lifts the blacks and compresses the contrast the whole rig exists to
+  produce. If the mark ever needs to look brighter, raise a Lightformer's `intensity`, not a light.
+  `<Canvas gl={{ toneMapping: THREE.NeutralToneMapping }}>` for the same reason on the tone-map side:
+  ACES's long toe flattens a dark object further and desaturates as it compresses, which fights the
+  ember/blue colour shift. Re-check `?markTime=0`, `4.62` and `13.9` after touching any of this —
+  they're the angles that go dead first.
 * Every reference section is kept, including the expertise route.

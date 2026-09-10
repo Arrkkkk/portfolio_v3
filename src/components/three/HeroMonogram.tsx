@@ -131,8 +131,8 @@ function Monogram({ blast }: { blast: React.RefObject<number> }) {
         >
           <meshStandardMaterial
             color="#2a2a2a"
-            metalness={0.9}
-            roughness={0.23}
+            metalness={1}
+            roughness={0.12}
             envMapIntensity={1.15}
           />
         </mesh>
@@ -252,9 +252,15 @@ function Scene() {
         />
       </Environment>
 
-      <ambientLight intensity={0.12} />
-      <directionalLight position={[-4, 5, 4]} intensity={0.9} color="#cfd8ff" />
-      <pointLight position={[3.1, -2.2, 2.4]} intensity={4} distance={10} color="#e2521f" />
+      {/*
+        No ambient/directional/point lights here. At metalness 1 the surface has
+        no diffuse response left for those to paint onto, so their only effect
+        was a flat grey veil added to every pixel regardless of angle — it
+        lifted the blacks and compressed the whole range. Removing it means a
+        facet is genuinely black when it reflects a dark gap and genuinely
+        bright when it catches a panel: full contrast, driven only by the
+        environment above.
+      */}
       <Monogram blast={blast} />
       <ConstellationField />
     </>
@@ -266,7 +272,7 @@ export function HeroMonogram() {
     <Canvas
       camera={{ position: [0, 0, 6.2], fov: 42 }}
       dpr={[1, 1.75]}
-      gl={{ antialias: true, alpha: true }}
+      gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping }}
     >
       <Scene />
     </Canvas>

@@ -28,7 +28,7 @@ export const site = {
   about: {
     label: "ABOUT",
     statement:
-      "Rajit is an independent product engineer crafting considered digital experiences through design, engineering, and motion.", // TODO confirm
+      "I'm exploring the intersection of code, AI, and design by building things that matter in the world today.",
     note: ["I DESIGN FOR LONGEVITY", "CLARITY FIRST, CRAFT ALWAYS,", "BUILT TO SCALE."],
     mission:
       "My aim is to make software feel human — building products that are intuitive, purposeful and meaningful to the people who use them.", // TODO confirm

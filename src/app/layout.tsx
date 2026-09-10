@@ -13,17 +13,21 @@ import { PageTransition } from "@/components/chrome/PageTransition";
 import { site } from "@/data/site";
 
 /**
- * Display face: General Sans (Fontshare, free) — the closest freely-licensable
- * match to the reference's PP Neue Montreal: single-storey `g`, double-storey
- * `a`, tight sidebearings. Weight 400 carries the whole design; 500 is used
- * only by the wordmark. See analysis/DESIGN-SYSTEM.md §2.
+ * Display face: PP Neue Montreal — the reference's own face, replacing the
+ * General Sans stand-in that stood here while the real files were unavailable.
+ * Book is mapped to 400 and Medium to 500, matching how the design uses them:
+ * 400 carries everything, 500 only the wordmark. See analysis/DESIGN-SYSTEM.md §2.
+ *
+ * Subset to Latin + punctuation + arrows and converted to woff2 from the OTFs
+ * (pyftsubset, kern/liga/calt retained). The captions' emoji are unaffected —
+ * those come from the system emoji face, not from here.
  */
-const generalSans = localFont({
+const neueMontreal = localFont({
   src: [
-    { path: "./fonts/GeneralSans-400.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/GeneralSans-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/NeueMontreal-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/NeueMontreal-500.woff2", weight: "500", style: "normal" },
   ],
-  variable: "--font-general-sans",
+  variable: "--font-neue-montreal",
   display: "swap",
 });
 
@@ -47,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${generalSans.variable} ${jetbrainsMono.variable} antialiased`}
+      className={`${neueMontreal.variable} ${jetbrainsMono.variable} antialiased`}
     >
       <body>
         <ChapterProvider>

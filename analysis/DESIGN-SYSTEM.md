@@ -78,8 +78,8 @@ into the UI.
 
 Fallback stacks (if PP Neue Montreal is not licensed — pick one and stay with it):
 ```css
---font-display: "PP Neue Montreal", "Neue Montreal", "General Sans", "Satoshi",
-                "Helvetica Neue", Arial, sans-serif;   /* General Sans & Satoshi are free (Fontshare) */
+--font-display: "PP Neue Montreal", "Neue Montreal",
+                "Helvetica Neue", Arial, sans-serif;   /* self-hosted: Book -> 400, Medium -> 500 */
 --font-mono:    "PP Supply Mono", "Geist Mono", "JetBrains Mono", "Roboto Mono",
                 ui-monospace, monospace;
 ```

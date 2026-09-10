@@ -125,8 +125,6 @@ the camera side — face-on was a second dead angle, since a mirror pointing at 
 empty space behind them. Regression-test both with `/?markTime=`.
 
 Known deltas from the reference, accepted for now:
-* The display face is **General Sans**, not PP Neue Montreal — slightly wider, so long
-  headlines run ~2% longer than the reference at the same size.
 * The hero cluster and the services monolith are **original geometry with procedural
   textures**, not the reference's authored 3D assets. Composition, scale, staging and
   scrub timing follow the frames; surface detail does not.

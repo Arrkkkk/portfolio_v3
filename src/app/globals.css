@@ -31,7 +31,7 @@
   --color-arc: #2e7bff;
 
   /* --- families --- */
-  --font-display: var(--font-general-sans), "PP Neue Montreal", "Neue Montreal",
+  --font-display: var(--font-neue-montreal), "PP Neue Montreal", "Neue Montreal",
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 

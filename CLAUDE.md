@@ -71,7 +71,7 @@ src/
 │   ├── layout.tsx            Header, MenuOverlay, PageTransition, Lenis provider
 │   ├── page.tsx              Home
 │   ├── expertise/page.tsx    Services-equivalent
-│   ├── fonts/                self-hosted General Sans
+│   ├── fonts/                self-hosted PP Neue Montreal
 │   └── globals.css           @theme tokens
 ├── components/
 │   ├── chrome/               Header, Logo, Monogram, PillButton, AudioToggle, MenuOverlay,
@@ -245,9 +245,11 @@ contact details — ask the owner.
 
 ## Decisions already made (do not re-litigate)
 
-* Display face: **General Sans** (Fontshare, free), self-hosted in `src/app/fonts/`. Swap in
-  PP Neue Montreal by replacing those files and the `localFont` src list in `app/layout.tsx`.
-  (The owner has since downloaded PP Neue Montreal — offer the swap.)
+* Display face: **PP Neue Montreal**, the reference's own face, self-hosted in `src/app/fonts/`
+  (Book → 400, Medium → 500). Subset to Latin + punctuation + arrows and converted from the OTFs
+  with `pyftsubset --flavor=woff2`, kern/liga/calt retained. It replaced a General Sans stand-in
+  that was in place only while the real files were unavailable; nothing else about the type system
+  changed, because the scale and tracking were measured from the reference in the first place.
 * All three WebGL set-pieces are **real R3F scenes**. Only the monogram uses the owner's artwork;
   the monolith and gallery use original geometry and procedural textures — no reference assets.
 * The hero mark **swings within ±35° rather than spinning 360°**: an extruded flat logo reads as a

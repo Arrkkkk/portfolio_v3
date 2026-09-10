@@ -130,13 +130,22 @@ re-measuring:
    (mag 2.0) leads Aries, not 41 Arietis (mag 3.63).
 4. **Richness comes from density, not level.** Faint stars in quantity beat bright ones. If the sky
    looks thin, add stars — do not turn the existing ones up.
-5. **The Milky Way is the same field at higher density**, not a layer on top. Stars are sampled
-   against a real galactic model (exponential thin disk, central bulge, Great Rift dust lanes) in
-   galactic coordinates, so the band lands where the galaxy actually is: the plane is inclined ~60°
-   to the ecliptic and crosses it near Sagittarius and Gemini, so the core sweeps through as that
-   sign does. Density alone is not enough — at a subordinate brightness ~1700 visible stars read as
-   scatter, so a very faint unresolved-haze layer carries the glow. Violet is bound to the bulge
-   only; it must never become a tint across the sky.
+5. **The Milky Way is a textured ribbon along the galactic equator**, built in galactic coordinates
+   and converted to ecliptic, so it sits where the galaxy actually is: the plane is inclined ~60° to
+   the ecliptic and crosses it near Sagittarius and Gemini, and the core sweeps through as that sign
+   does. Star *density* also follows the same galactic model, so the band is denser in resolved
+   stars too.
+
+   Do not rebuild the glow out of sprites. That was tried twice: accumulating soft points cannot
+   look smooth, because the overlap needed to blend them makes each one individually visible first,
+   and it came out as cotton wool. One ribbon with a procedural cloud texture — fBm clumping, Great
+   Rift dust lanes cut into it — is both smoother and far cheaper.
+
+   Violet is bound to the bulge only; it must never become a tint across the sky. The ribbon's
+   opacity is extremely sensitive: 0.5 washed the whole hero out, 0.1 still carried 5x the mark's
+   light, and 0.04 is right. Judge it by **diffuse level** (16px box-average peak, currently ~26
+   against the mark's ~62), never by total light — a wide low-contrast wash accumulates enormous
+   total light while staying perceptually subordinate.
 
 **Measuring the sky.** Exclude the mark box, the headline block **and the EST badge** — the badge is
 bright UI and silently inflated every sky measurement until it was masked. Total light is the right

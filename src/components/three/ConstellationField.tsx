@@ -96,6 +96,23 @@ function toGalactic(ra: number, dec: number) {
   return { l: (((l / DEG) % 360) + 360) % 360, b: b / DEG };
 }
 
+/** Galactic (longitude/latitude) to ecliptic, via equatorial. Degrees. */
+function fromGalactic(l: number, b: number) {
+  const lr = l * DEG;
+  const br = b * DEG;
+  const pa = NGP_RA * DEG;
+  const pd = NGP_DEC * DEG;
+  const phi = NCP_L * DEG - lr;
+
+  const sinDec = Math.sin(br) * Math.sin(pd) + Math.cos(br) * Math.cos(pd) * Math.cos(phi);
+  const dec = Math.asin(THREE.MathUtils.clamp(sinDec, -1, 1));
+  const y = Math.cos(br) * Math.sin(phi);
+  const x = Math.sin(br) * Math.cos(pd) - Math.cos(br) * Math.sin(pd) * Math.cos(phi);
+  const ra = pa + Math.atan2(y, x);
+
+  return toEcliptic(((ra / DEG) + 360) % 360, dec / DEG);
+}
+
 // --- Placement -------------------------------------------------------------
 // A cylindrical projection: ecliptic longitude along the band, latitude across
 // it, the whole thing tilted so it reads as a diagonal rather than a horizon.
@@ -153,6 +170,16 @@ function projectInto(out: THREE.Vector2, dLon: number, lat: number) {
     x * tiltSin + y * tiltCos + ANCHOR.y,
   );
   return out;
+}
+
+/** World position back to band coordinates — the inverse of projectInto. */
+function unproject(x: number, y: number) {
+  const px = x - ANCHOR.x;
+  const py = y - ANCHOR.y;
+  return {
+    dLon: (px * tiltCos + py * tiltSin) / SCALE,
+    lat: (-px * tiltSin + py * tiltCos) / SCALE,
+  };
 }
 
 /** 0 where the mark is, 1 well clear of it, compared in tan-space. */
@@ -254,15 +281,7 @@ const FIELD_TIERS = [
   { size: 0.045, share: 0.71 },
 ];
 
-/**
- * Unresolved haze. Density alone does not make a Milky Way: at a brightness
- * that stays subordinate to the mark, ~1700 visible stars read as scatter, not
- * as cloud — the real band is mostly light that never resolves into countable
- * points. These are large, very faint sprites that accumulate into the glow,
- * sampled on the luminous disk only so they never spread across the open sky.
- */
-const HAZE_COUNT = 5000;
-const HAZE_SIZE = 0.85;
+
 
 /** Violet only where the core is — never a tint across the whole sky. */
 const VIOLET_R = 0.72;
@@ -337,38 +356,7 @@ function buildDeepField() {
     zsBy[tier].push(-1.6 - rand() * 7.4);
   }
 
-  // Haze, sampled on the disk component alone — the halo floor is resolved
-  // stars, not glow, so it must not carry haze into the empty sky.
-  const hazeLons: number[] = [];
-  const hazeLats: number[] = [];
-  const hazeZs: number[] = [];
-  const hazeCols: number[] = [];
-  let hazeGuard = 0;
-  while (hazeLons.length < HAZE_COUNT && hazeGuard < HAZE_COUNT * 60) {
-    hazeGuard++;
-    const lon = rand() * 360;
-    const lat = (rand() - 0.5) * 2 * FIELD_LAT;
-    const { ra, dec } = toEquatorial(lon, lat);
-    const { l, b } = toGalactic(ra, dec);
-    const { weight, core } = galacticDensity(l, b);
-    const glow = Math.max(0, weight - HALO) / (1 - HALO);
-    if (rand() > glow) continue;
-
-    // Faint enough that only heavy overlap registers: sparse large sprites
-    // read as lens smudges, many small ones merge into cloud.
-    const lum = 0.017 + core * 0.015;
-    const violet = THREE.MathUtils.clamp(core * 1.3, 0, 1) * 0.32;
-    hazeCols.push(
-      THREE.MathUtils.lerp(0.7, VIOLET_R, violet) * lum,
-      THREE.MathUtils.lerp(0.76, VIOLET_G, violet) * lum,
-      THREE.MathUtils.lerp(0.92, VIOLET_B, violet) * lum,
-    );
-    hazeLons.push(lon);
-    hazeLats.push(lat);
-    hazeZs.push(-4.5 - rand() * 2);
-  }
-
-  const tiers = FIELD_TIERS.map((tier, i) => {
+  return FIELD_TIERS.map((tier, i) => {
     const n = lonsBy[i].length;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
@@ -382,21 +370,6 @@ function buildDeepField() {
     };
   });
 
-  const hazeGeom = new THREE.BufferGeometry();
-  hazeGeom.setAttribute(
-    "position",
-    new THREE.BufferAttribute(new Float32Array(hazeLons.length * 3), 3),
-  );
-  hazeGeom.setAttribute("color", new THREE.BufferAttribute(new Float32Array(hazeCols), 3));
-  tiers.push({
-    geometry: hazeGeom,
-    size: HAZE_SIZE,
-    lons: new Float32Array(hazeLons),
-    lats: new Float32Array(hazeLats),
-    zs: new Float32Array(hazeZs),
-  });
-
-  return tiers;
 }
 
 function DeepField({ texture }: { texture: THREE.Texture }) {
@@ -440,6 +413,209 @@ function DeepField({ texture }: { texture: THREE.Texture }) {
         </points>
       ))}
     </group>
+  );
+}
+
+
+// --- Milky Way -------------------------------------------------------------
+
+/**
+ * The band, as a textured ribbon following the galactic equator.
+ *
+ * A previous version accumulated thousands of soft sprites. That cannot work:
+ * to read as a smooth cloud the overlap has to be so heavy that each sprite is
+ * individually visible first — it came out looking like cotton wool. A single
+ * ribbon carrying a procedural cloud texture gives genuinely continuous
+ * structure, with dust lanes cut into it, at a fraction of the vertex count.
+ *
+ * The ribbon is built in galactic coordinates and converted to ecliptic, so it
+ * sits where the galaxy actually does and drifts with everything else.
+ */
+
+const MW_LAT = 24; // galactic latitude the ribbon spans, degrees
+const MW_SEGS_L = 240;
+const MW_SEGS_B = 16;
+const MW_Z = -5.2;
+
+/** Smooth value noise, and fBm over it — enough for a soft cloud. */
+function noise2(x: number, y: number) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  const sx = xf * xf * (3 - 2 * xf);
+  const sy = yf * yf * (3 - 2 * yf);
+  const h = (a: number, b: number) => {
+    const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+    return n - Math.floor(n);
+  };
+  const a = h(xi, yi);
+  const b = h(xi + 1, yi);
+  const c = h(xi, yi + 1);
+  const d = h(xi + 1, yi + 1);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+function fbm(x: number, y: number, octaves = 5) {
+  let v = 0;
+  let amp = 0.5;
+  let f = 1;
+  for (let i = 0; i < octaves; i++) {
+    v += noise2(x * f, y * f) * amp;
+    f *= 2;
+    amp *= 0.5;
+  }
+  return v;
+}
+
+/** Cloud texture in galactic space: u is longitude, v is latitude. */
+function createMilkyWayTexture() {
+  const W = 512;
+  const H = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  const img = ctx.createImageData(W, H);
+
+  for (let y = 0; y < H; y++) {
+    const b = ((y + 0.5) / H - 0.5) * 2 * MW_LAT;
+    for (let x = 0; x < W; x++) {
+      const l = ((x + 0.5) / W) * 360;
+      const dl = Math.abs(wrap180(l));
+
+      // Luminous disk, plus the bulge toward the galactic centre.
+      const disk = Math.exp(-((b / 8.5) ** 2));
+      const bulge = Math.exp(-((dl / 32) ** 2)) * Math.exp(-((b / 15) ** 2));
+      let v = disk * 0.75 + bulge * 0.85;
+
+      // Clumping, so the band has structure rather than being a smooth smear.
+      v *= 0.45 + 0.85 * fbm(l / 9, (b + MW_LAT) / 5);
+
+      // Dust lanes: the Great Rift, wandering along the plane.
+      const lr = l * DEG;
+      const riftCentre = 1.6 * Math.sin(lr * 1.3 + 0.4) + 1.0 * Math.sin(lr * 2.9 + 1.7);
+      const riftWidth = 3.0 + 1.4 * Math.sin(lr * 0.8);
+      const t = (b - riftCentre) / riftWidth;
+      const rift = Math.exp(-t * t) * (0.55 + 0.35 * Math.exp(-((dl / 55) ** 2)));
+      v *= 1 - rift * (0.55 + 0.4 * fbm(l / 5 + 40, b / 3 + 40));
+
+      const a = THREE.MathUtils.clamp(v, 0, 1);
+      // Violet only where the bulge is; the rest stays the sky's cool white.
+      const violet = THREE.MathUtils.clamp(bulge * 1.2, 0, 1) * 0.38;
+      const i = (y * W + x) * 4;
+      img.data[i] = 255 * THREE.MathUtils.lerp(0.70, VIOLET_R, violet);
+      img.data[i + 1] = 255 * THREE.MathUtils.lerp(0.76, VIOLET_G, violet);
+      img.data[i + 2] = 255 * THREE.MathUtils.lerp(0.94, VIOLET_B, violet);
+      img.data[i + 3] = 255 * a;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
+function MilkyWay({ skyHover }: { skyHover: React.RefObject<number> }) {
+  const mesh = useRef<THREE.Mesh>(null);
+  const frozen = useSkyTime();
+
+  const built = useMemo(() => {
+    const texture = createMilkyWayTexture();
+    const geometry = new THREE.BufferGeometry();
+
+    const nL = MW_SEGS_L + 1;
+    const nB = MW_SEGS_B + 1;
+    const count = nL * nB;
+    const lons = new Float32Array(count);
+    const lats = new Float32Array(count);
+    const uv = new Float32Array(count * 2);
+
+    for (let j = 0; j < nB; j++) {
+      const b = (j / MW_SEGS_B - 0.5) * 2 * MW_LAT;
+      for (let i = 0; i < nL; i++) {
+        const l = (i / MW_SEGS_L) * 360;
+        const e = fromGalactic(l, b);
+        const k = j * nL + i;
+        lons[k] = e.lon;
+        lats[k] = e.lat;
+        uv[k * 2] = i / MW_SEGS_L;
+        uv[k * 2 + 1] = j / MW_SEGS_B;
+      }
+    }
+
+    const indices: number[] = [];
+    for (let j = 0; j < MW_SEGS_B; j++) {
+      for (let i = 0; i < MW_SEGS_L; i++) {
+        const a = j * nL + i;
+        const b2 = a + 1;
+        const c = a + nL;
+        const d = c + 1;
+        indices.push(a, c, b2, b2, c, d);
+      }
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    geometry.setIndex(indices);
+
+    return { texture, geometry, lons, lats, count };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      built.texture.dispose();
+      built.geometry.dispose();
+    };
+  }, [built]);
+
+  const v = useMemo(() => new THREE.Vector2(), []);
+
+  useFrame((state) => {
+    const { geometry, lons, lats, count } = built;
+    const centre = LON_CENTRE + (frozen ?? state.clock.elapsedTime) * DRIFT_DEG_PER_SEC;
+    const halfH = (CAMERA_Z - MW_Z) * Math.tan((42 / 2) * DEG);
+    const halfW = halfH * (state.size.width / state.size.height);
+
+    const pos = geometry.attributes.position.array as Float32Array;
+    const col = geometry.attributes.color.array as Float32Array;
+    // A gentle lift when the cursor is on the band, so it answers the hover
+    // like the constellations do.
+    const lift = 1 + (skyHover.current ?? 0) * 0.18;
+
+    for (let k = 0; k < count; k++) {
+      projectInto(v, wrap180(lons[k] - centre), lats[k]);
+      const j = k * 3;
+      pos[j] = v.x;
+      pos[j + 1] = v.y;
+      pos[j + 2] = MW_Z;
+      // Same content mask as the stars: clear of the mark, clear of the type.
+      const m = clearZone(v.x, v.y) * textMask(v.x / halfW, v.y / halfH) * lift;
+      col[j] = m;
+      col[j + 1] = m;
+      col[j + 2] = m;
+    }
+    geometry.attributes.position.needsUpdate = true;
+    geometry.attributes.color.needsUpdate = true;
+    geometry.computeBoundingSphere();
+  });
+
+  return (
+    <mesh ref={mesh} geometry={built.geometry}>
+      <meshBasicMaterial
+        map={built.texture}
+        vertexColors
+        transparent
+        opacity={0.04}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </mesh>
   );
 }
 
@@ -522,6 +698,8 @@ export function ConstellationField() {
 
   const built = useMemo(() => buildField(), []);
   const frozenSky = useSkyTime();
+  /** How strongly the cursor is sitting on the Milky Way, 0..1. */
+  const skyHover = useRef(0);
   const scratch = useMemo(
     () => ({
       v: new THREE.Vector2(),
@@ -578,6 +756,16 @@ export function ConstellationField() {
       if (near > hover[stars[i].sign]) hover[stars[i].sign] = near;
     }
     hover[featured] = Math.max(hover[featured], FEATURED_FLOOR);
+
+    // Where is the cursor in the sky? Convert it back to galactic latitude:
+    // near the plane means it is over the Milky Way, which then answers the
+    // hover and can name itself like a constellation.
+    const back = unproject(px, py);
+    const cursorLon = ((back.dLon + centre) % 360 + 360) % 360;
+    const eq = toEquatorial(cursorLon, back.lat);
+    const gal = toGalactic(eq.ra, eq.dec);
+    const onBand = 1 - THREE.MathUtils.smoothstep(Math.abs(gal.b), 7, 21);
+    skyHover.current = onBand;
 
     // 3. write star positions and colours
     for (let i = 0; i < stars.length; i++) {
@@ -641,10 +829,19 @@ export function ConstellationField() {
     for (let s = 0; s < ZODIAC.length; s++) {
       if (hover[s] > 0.42 && (best === -1 || hover[s] > hover[best])) best = s;
     }
+    // The band names itself too, but yields to a constellation the cursor is
+    // actually on — a named figure is the more specific answer.
+    const bandWins = onBand > 0.55 && (best === -1 || onBand > hover[best] + 0.12);
     const el = labelEl.current;
     const lg = labelGroup.current;
     if (el && lg) {
-      if (best === -1) {
+      if (bandWins) {
+        lg.position.set(px, py - 0.55, PLANE_Z);
+        el.textContent = "Milky Way";
+        el.style.opacity = String(
+          THREE.MathUtils.smoothstep(onBand, 0.55, 0.8) * 0.7,
+        );
+      } else if (best === -1) {
         el.style.opacity = "0";
       } else {
         const mine = bySign[best];
@@ -665,6 +862,7 @@ export function ConstellationField() {
 
   return (
     <group>
+      <MilkyWay skyHover={skyHover} />
       <DeepField texture={texture} />
 
       {built.tierGeoms.map((geometry, i) => (

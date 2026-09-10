@@ -139,6 +139,13 @@ const DRIFT_DEG_PER_SEC = 360 / 900;
 const CAMERA_Z = 6.2;
 const CLEAR_INNER = 0.3;
 const CLEAR_OUTER = 0.46;
+/**
+ * The band gets a wider, softer moat than the stars do. "Do not overpower the
+ * mark" is a *local* constraint — about its immediate surround, not the whole
+ * frame — so giving the mark more clearance buys brightness everywhere else.
+ */
+const MW_CLEAR_INNER = 0.34;
+const MW_CLEAR_OUTER = 0.62;
 
 /** Reveal falloff, in world units on the star plane (~120px per unit). */
 const REVEAL_NEAR = 1.0;
@@ -484,29 +491,43 @@ function createMilkyWayTexture() {
       const l = ((x + 0.5) / W) * 360;
       const dl = Math.abs(wrap180(l));
 
-      // Luminous disk, plus the bulge toward the galactic centre.
-      const disk = Math.exp(-((b / 8.5) ** 2));
-      const bulge = Math.exp(-((dl / 32) ** 2)) * Math.exp(-((b / 15) ** 2));
-      let v = disk * 0.75 + bulge * 0.85;
+      // Concentrated: a narrow bright core with a fainter wide halo, rather
+      // than one broad falloff. Spread thin the band reads as fog; concentrated
+      // it reads as a band with edges.
+      const core = Math.exp(-((b / 5.5) ** 2));
+      const halo = Math.exp(-((b / 13) ** 2)) * 0.35;
+      const bulge = Math.exp(-((dl / 30) ** 2)) * Math.exp(-((b / 11) ** 2));
+      let v = core * 0.75 + halo + bulge * 0.9;
 
-      // Clumping, so the band has structure rather than being a smooth smear.
-      v *= 0.45 + 0.85 * fbm(l / 9, (b + MW_LAT) / 5);
+      // Clumping, with enough range to give real star clouds rather than a
+      // smooth smear. Structure is what identifies the thing.
+      v *= 0.28 + 1.15 * fbm(l / 9, (b + MW_LAT) / 5);
 
-      // Dust lanes: the Great Rift, wandering along the plane.
+      // Dust lanes: the Great Rift, wandering along the plane and cutting deep.
       const lr = l * DEG;
       const riftCentre = 1.6 * Math.sin(lr * 1.3 + 0.4) + 1.0 * Math.sin(lr * 2.9 + 1.7);
       const riftWidth = 3.0 + 1.4 * Math.sin(lr * 0.8);
       const t = (b - riftCentre) / riftWidth;
-      const rift = Math.exp(-t * t) * (0.55 + 0.35 * Math.exp(-((dl / 55) ** 2)));
-      v *= 1 - rift * (0.55 + 0.4 * fbm(l / 5 + 40, b / 3 + 40));
+      const rift = Math.exp(-t * t) * (0.72 + 0.25 * Math.exp(-((dl / 55) ** 2)));
+      v *= 1 - rift * (0.7 + 0.3 * fbm(l / 5 + 40, b / 3 + 40));
 
-      const a = THREE.MathUtils.clamp(v, 0, 1);
-      // Violet only where the bulge is; the rest stays the sky's cool white.
-      const violet = THREE.MathUtils.clamp(bulge * 1.2, 0, 1) * 0.38;
+      // Contrast curve: push the gaps down so the clouds stand out, instead of
+      // lifting everything and washing the hero.
+      const a = THREE.MathUtils.clamp(Math.pow(THREE.MathUtils.clamp(v, 0, 1), 1.35) * 1.3, 0, 1);
+
+      // Violet through the band, amber in the bulge — the galactic core really
+      // is yellowed by the dust in front of it.
+      // Tighter than the bulge's brightness falloff: reusing that spread amber
+      // across the whole band and the violet never showed at all.
+      const warm = THREE.MathUtils.clamp(
+        Math.exp(-((dl / 17) ** 2)) * Math.exp(-((b / 9) ** 2)) * 1.35,
+        0,
+        1,
+      );
       const i = (y * W + x) * 4;
-      img.data[i] = 255 * THREE.MathUtils.lerp(0.70, VIOLET_R, violet);
-      img.data[i + 1] = 255 * THREE.MathUtils.lerp(0.76, VIOLET_G, violet);
-      img.data[i + 2] = 255 * THREE.MathUtils.lerp(0.94, VIOLET_B, violet);
+      img.data[i] = 255 * THREE.MathUtils.lerp(0.56, 0.99, warm);
+      img.data[i + 1] = 255 * THREE.MathUtils.lerp(0.53, 0.79, warm);
+      img.data[i + 2] = 255 * THREE.MathUtils.lerp(0.99, 0.55, warm);
       img.data[i + 3] = 255 * a;
     }
   }
@@ -593,7 +614,9 @@ function MilkyWay({ skyHover }: { skyHover: React.RefObject<number> }) {
       pos[j + 1] = v.y;
       pos[j + 2] = MW_Z;
       // Same content mask as the stars: clear of the mark, clear of the type.
-      const m = clearZone(v.x, v.y) * textMask(v.x / halfW, v.y / halfH) * lift;
+      const screenR = Math.hypot(v.x, v.y) / (CAMERA_Z - MW_Z);
+      const moat = THREE.MathUtils.smoothstep(screenR, MW_CLEAR_INNER, MW_CLEAR_OUTER);
+      const m = moat * textMask(v.x / halfW, v.y / halfH) * lift;
       col[j] = m;
       col[j + 1] = m;
       col[j + 2] = m;
@@ -609,7 +632,7 @@ function MilkyWay({ skyHover }: { skyHover: React.RefObject<number> }) {
         map={built.texture}
         vertexColors
         transparent
-        opacity={0.04}
+        opacity={0.115}
         depthWrite={false}
         side={THREE.DoubleSide}
         blending={THREE.AdditiveBlending}

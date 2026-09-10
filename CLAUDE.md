@@ -141,11 +141,21 @@ re-measuring:
    and it came out as cotton wool. One ribbon with a procedural cloud texture — fBm clumping, Great
    Rift dust lanes cut into it — is both smoother and far cheaper.
 
-   Violet is bound to the bulge only; it must never become a tint across the sky. The ribbon's
-   opacity is extremely sensitive: 0.5 washed the whole hero out, 0.1 still carried 5x the mark's
-   light, and 0.04 is right. Judge it by **diffuse level** (16px box-average peak, currently ~26
-   against the mark's ~62), never by total light — a wide low-contrast wash accumulates enormous
-   total light while staying perceptually subordinate.
+   **Apparency comes from concentration, contrast and colour — not from opacity.** The band was
+   once invisible in practice, and the fix was not brightness: a narrow bright core with a fainter
+   halo instead of one broad falloff, a contrast curve pushing the gaps down so the star clouds
+   stand out, and colour doing the identifying (violet through the band, amber confined to the
+   bulge — the real core is yellowed by dust). Amber must stay tight; reusing the bulge's own
+   brightness falloff for it spread warm over everything and the violet never showed.
+
+   The mark's protection is **local**. The ribbon has its own wider, softer moat
+   (`MW_CLEAR_INNER`/`MW_CLEAR_OUTER`) than the stars do, which is what buys brightness everywhere
+   else: "do not overpower the mark" is about its immediate surround, not the whole frame.
+
+   Judge the level by **diffuse level** (16px box-average peak, currently ~44 at the core against
+   the mark's ~62), never by total light — a wide low-contrast wash accumulates enormous total
+   light while staying perceptually subordinate. Opacity is steeply nonlinear: 0.5 obliterated the
+   hero, 0.115 is right.
 
 **Measuring the sky.** Exclude the mark box, the headline block **and the EST badge** — the badge is
 bright UI and silently inflated every sky measurement until it was masked. Total light is the right

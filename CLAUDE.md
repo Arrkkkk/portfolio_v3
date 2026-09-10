@@ -261,4 +261,13 @@ contact details — ask the owner.
   ACES's long toe flattens a dark object further and desaturates as it compresses, which fights the
   ember/blue colour shift. Re-check `?markTime=0`, `4.62` and `13.9` after touching any of this —
   they're the angles that go dead first.
+* **The camera-side fill is warm on purpose, and its two panels must never leave a gap.** The sky's
+  wash is violet; the fill was once cool (`#c9d3ee`), which put the mark in the *same* hue as the
+  thing it has to stand out from — face-on measured (26,24,31) against a (22,21,28) background, so
+  the mark was actually darker than the sky behind it and vanished. Warm inverts the hue and widens
+  the swing's sweep (warm face-on → cool at the rim strips). The two panels are layered, not placed
+  side by side: a face-on front face at (px, py, 0) reflects to about (2.45·px, 2.45·py) on the
+  z≈9 plane, so the mark's reflection lands within x,y ∈ ±3 and *any* gap there is a dead patch in
+  the middle of the mark. The warm panel covers that window alone; the cool one sits in front of
+  part of it. Keep it that way — divide by colour, never by absence of light.
 * Every reference section is kept, including the expertise route.

@@ -229,16 +229,39 @@ function Scene() {
           target={[0, 0, 0]}
         />
         {/*
-          Camera-side softbox. Face-on, the front faces mirror whatever sits
-          behind the camera — with nothing there they render black, which is the
-          same failure as the extremes, just at the opposite end of the swing.
+          Camera-side fill. Face-on, the front faces mirror whatever sits behind
+          the camera — with nothing there they render black, which is the same
+          failure as the extremes, just at the opposite end of the swing.
+
+          Two panels, deliberately NOT side by side with a gap. A face-on front
+          face at (px, py, 0) reflects to roughly (2.45·px, 2.45·py) on this
+          plane, so the mark's own reflection lands inside about x,y ∈ ±3 — a
+          gap anywhere in that window would put a dead patch in the middle of
+          the mark at exactly the angle this fill exists to rescue. Instead the
+          warm panel below covers the whole window on its own, and the cool one
+          is layered in front of part of it. Coverage can never have a hole;
+          the division is a change of colour, not an absence of light.
+
+          Warm is the point, not incidental: the sky's wash is violet, and the
+          old cool-blue fill (#c9d3ee) put the mark in the same hue as the thing
+          it has to stand out from — measured at (26,24,31) against a (22,21,28)
+          background, i.e. no separation in either hue or value. Warm here also
+          widens the swing's colour sweep, warm face-on to cool at the rim.
         */}
         <Lightformer
           form="rect"
-          intensity={1.15}
-          color="#c9d3ee"
+          intensity={2.9}
+          color="#ffdfc6"
           position={[1.5, 2.5, 9]}
           scale={[14, 12]}
+          target={[0, 0, 0]}
+        />
+        <Lightformer
+          form="rect"
+          intensity={2.1}
+          color="#9fbcff"
+          position={[-4.2, -2.2, 8.4]}
+          scale={[7, 7]}
           target={[0, 0, 0]}
         />
         {/* Dim backdrop so rear-facing chamfers still separate from the page. */}

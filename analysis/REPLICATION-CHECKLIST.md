@@ -20,7 +20,7 @@ compare against the named frame → fix → re-shoot). Reference frames are give
 - [x] Hero 76px / lh 0.98 / −0.02em *(f13)* — **P0**
 - [x] Display statement 72px / lh 1.04 *(f48, f248)* — **P0**
 - [x] Kinetic stack ~112px / lh 0.80, uppercase *(f130)* — **P0**
-- [x] Marquee ~120px, 30% opacity *(f70)* — **P1**
+- [x] Marquee ~120px *(f70)* — **P1** *(30% opacity deliberately overridden — see deltas)*
 - [x] Body 16px / 1.35, small 14px / 1.3 *(f48, f320)* — **P0**
 - [x] Mono label 12px / +0.06em uppercase *(f48, f130)* — **P0**
 - [x] Manual line breaks in headlines (no auto-wrap) *(f13, f100, f248)* — **P0**
@@ -125,6 +125,9 @@ the camera side — face-on was a second dead angle, since a mirror pointing at 
 empty space behind them. Regression-test both with `/?markTime=`.
 
 Known deltas from the reference, accepted for now:
+* **The home marquee is `--text-hi` (#F2F2F2), not the measured 30% white**, and reads
+  `EXPLORE + BUILD + EVOLVE` rather than the reference's three words. Owner's call.
+  `PAGES.md` §03 keeps the measured value.
 * **A05 starts from `--text-lo` (#6E6E6E), not the measured `--text-mid` (#AAAAAA).** The
   measured pair is only 2.08:1 apart against the #F2F2F2 end, and the reveal was hard to
   notice while scrolling; #6E6E6E gives 4.55:1. Owner's call, both WordReveal instances.

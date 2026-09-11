@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -8,7 +8,16 @@ import { cn } from "@/lib/utils";
 
 /**
  * A07 — an infinite right→left band at ~90px/s, with a scroll-velocity boost.
- * Two copies of the track are translated so the loop is seamless.
+ *
+ * The track is tiled with identical copies of the word list and translated by
+ * exactly one copy's width, which is what makes the wrap invisible.
+ *
+ * The copy count is measured, not fixed at two. One pass has to be wider than
+ * the viewport or the wrap leaves a gap at the right edge, and whether it is
+ * depends entirely on how long the words happen to be: "EXPLORE + BUILD +
+ * EVOLVE" measures 1691px against a 1710px viewport and tore, where the longer
+ * list it replaced did not. Deriving the count from the measured width means
+ * the copy can change without anyone having to remember this.
  */
 export function Marquee({
   words,
@@ -21,17 +30,32 @@ export function Marquee({
 }) {
   const track = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
+  const [copies, setCopies] = useState(2);
 
   useEffect(() => {
     const el = track.current;
-    if (!el || reduced) return;
+    if (!el) return;
+
+    const pass = el.scrollWidth / copies;
+    if (!pass) return;
+
+    // +1 so a full pass can always scroll in behind the one leaving.
+    const needed = Math.max(
+      2,
+      Math.ceil((el.parentElement?.clientWidth ?? window.innerWidth) / pass) + 1,
+    );
+    if (needed !== copies) {
+      setCopies(needed);
+      return; // re-measure on the next pass, with the right number rendered
+    }
+
+    if (reduced) return;
 
     gsap.registerPlugin(ScrollTrigger);
-    const half = el.scrollWidth / 2;
     const ctx = gsap.context(() => {
       const tween = gsap.to(el, {
-        x: -half,
-        duration: half / speed,
+        x: -pass,
+        duration: pass / speed,
         ease: "none",
         repeat: -1,
       });
@@ -54,7 +78,14 @@ export function Marquee({
     }, el);
 
     return () => ctx.revert();
-  }, [reduced, speed, words]);
+  }, [reduced, speed, words, copies]);
+
+  // A narrower viewport needs more copies to cover it; re-measure on resize.
+  useEffect(() => {
+    const onResize = () => setCopies(2);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const content = (
     <span className="flex shrink-0 items-center">
@@ -71,9 +102,12 @@ export function Marquee({
 
   return (
     <div className={cn("w-full overflow-hidden", className)} aria-hidden>
-      <div ref={track} className="flex w-max text-marquee text-white/30">
-        {content}
-        {content}
+      <div ref={track} className="flex w-max text-marquee text-text-hi">
+        {Array.from({ length: copies }, (_, i) => (
+          <span key={i} className="flex shrink-0 items-center">
+            {content}
+          </span>
+        ))}
       </div>
     </div>
   );

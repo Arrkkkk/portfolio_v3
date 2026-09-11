@@ -36,7 +36,7 @@ export const site = {
   },
 
   marquee: {
-    home: ["IMPACT", "INSPIRE", "INNOVATE"], // TODO confirm
+    home: ["EXPLORE", "BUILD", "EVOLVE"],
     expertise: ["BRANDING", "A.I.", "DESIGN", "DEVELOPMENT"],
     labelHome: ["FOCUSED VISION.", "MEASURED EXECUTION."],
     captionHome: "FROM IDEA TO OUTCOME.",

@@ -128,6 +128,10 @@ Known deltas from the reference, accepted for now:
 * **The home marquee is `--text-hi` (#F2F2F2), not the measured 30% white**, and reads
   `EXPLORE + BUILD + EVOLVE` rather than the reference's three words. Owner's call.
   `PAGES.md` §03 keeps the measured value.
+* **The home marquee is weight 500, breaking the "weight 400 display only" rule** — the one
+  exception. Book 400 measured ~28% thinner (stem:cap) than frame 070; Medium reads closer.
+  Tracking also corrected from the originally-inferred 0 to −0.035em (see `DESIGN-SYSTEM.md`).
+  Owner's call.
 * **A05 starts from `--text-lo` (#6E6E6E), not the measured `--text-mid` (#AAAAAA).** The
   measured pair is only 2.08:1 apart against the #F2F2F2 end, and the reveal was hard to
   notice while scrolling; #6E6E6E gives 4.55:1. Owner's call, both WordReveal instances.

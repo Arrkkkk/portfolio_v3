@@ -102,9 +102,17 @@ export function Marquee({
 
   return (
     <div className={cn("w-full overflow-hidden", className)} aria-hidden>
+      {/*
+        font-medium is a deliberate exception to CLAUDE.md's "weight 400
+        display only" rule. Measured stem:cap ratio against frame 070 (~0.145)
+        put Book 400 ~28% too thin (~0.105); Medium 500 (~0.157) overshoots by
+        a smaller margin in the other direction and reads far closer. Owner's
+        call — logged in REPLICATION-CHECKLIST.md so it isn't mistaken for
+        drift the next time someone re-reads the rule.
+      */}
       <div
         ref={track}
-        className="flex w-max text-marquee tracking-[-0.035em] text-text-hi"
+        className="flex w-max text-marquee font-medium tracking-[-0.035em] text-text-hi"
       >
         {Array.from({ length: copies }, (_, i) => (
           <span key={i} className="flex shrink-0 items-center">

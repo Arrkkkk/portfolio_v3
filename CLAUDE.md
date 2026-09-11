@@ -36,7 +36,10 @@ When in doubt, ask "how do I reproduce the reference here?", never "how would I 
 * Preserve the measured geometry: 32 px page padding, the 1032 px centred container for Key facts,
   the ~330 px body measure, the 1 px hairlines, the 28 px pill height.
 * Preserve the type system: weight 400 display only, tight tracking, sentence case for display,
-  uppercase reserved for mono micro-type and the kinetic/marquee stacks.
+  uppercase reserved for mono micro-type and the kinetic/marquee stacks. **One exception:** the home
+  marquee (`components/home/Marquee.tsx`) is weight 500. Measured stem:cap ratio against frame 070
+  put Book 400 ~28% too thin; Medium overshoots by less in the other direction and reads far closer.
+  Owner's call — do not "fix" it back to 400.
 * **No accent colour in the UI layer.** Colour exists only inside the 3D scenes.
 * Keep animations performant: animate `transform`/`opacity` only, `will-change` sparingly, one GSAP
   context per scene with proper cleanup, no layout thrash inside scroll handlers.

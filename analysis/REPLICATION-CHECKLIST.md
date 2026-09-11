@@ -125,6 +125,11 @@ the camera side — face-on was a second dead angle, since a mirror pointing at 
 empty space behind them. Regression-test both with `/?markTime=`.
 
 Known deltas from the reference, accepted for now:
+* **A05 starts from `--text-lo` (#6E6E6E), not the measured `--text-mid` (#AAAAAA).** The
+  measured pair is only 2.08:1 apart against the #F2F2F2 end, and the reveal was hard to
+  notice while scrolling; #6E6E6E gives 4.55:1. Owner's call, both WordReveal instances.
+  Still 3.79:1 on the background, clear of the 3:1 AA floor for large text. The measured
+  reference value stays recorded in `ANIMATIONS.md` §A05.
 * The hero cluster and the services monolith are **original geometry with procedural
   textures**, not the reference's authored 3D assets. Composition, scale, staging and
   scrub timing follow the frames; surface detail does not.

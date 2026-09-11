@@ -93,7 +93,7 @@ Weights actually used: **400 only** for display (no bold anywhere in headings), 
 | `display-hero` | **76 px** / 4.45 vw | 0.98 | −0.02 em | Sentence | hero H1 (frames 13–29) |
 | `display-lg` | **72 px** / 4.2 vw | 1.04 | −0.02 em | Sentence | about statement, footer CTA, "Client stories", "How we work", "Selected work & explorations" |
 | `display-kinetic` | **~112 px** / 6.5 vw | 0.80 | −0.01 em | UPPER | A.I./DESIGN/DEVELOPMENT/BRANDING stack (scroll-scaled 1 → ~1.15) |
-| `display-marquee` | **~120 px** / 7 vw | 1.0 | 0 | UPPER | IMPACT + INSPIRE + INNOVATE |
+| `display-marquee` | **~120 px** / 7 vw | 1.0 | **−0.035 em** (corrected — see below) | UPPER | IMPACT + INSPIRE + INNOVATE |
 | `title-lg` | **32 px** | 1.25 | −0.01 em | Sentence | menu links |
 | `title-md` | **30 px** | 1.2 | −0.01 em | Sentence | service detail titles, tech-stack row titles |
 | `title-sm` | **28 px** | 1.2 | −0.01 em | Sentence | process step titles ("Understand"), project card titles (24 px) |
@@ -114,6 +114,12 @@ f100 "Selected work" ink 54px (cap→baseline), pitch 74px        → 70–72px 
 f130 kinetic stack pitch 89.5px, "DEVELOPMENT" width 777px      → ~112px / lh 0.80
 f70  marquee cap height 87px                                    → ~120px
 ```
+
+**Marquee tracking, corrected.** The `0` tracking above was inferred from cap height alone, never checked
+against word width, and was wrong: at 0 tracking, our render of "INSPIRE"/"INNOVATE" measured ~9–11%
+*wider* (ink-to-ink) than the same words in frame 070 at matching cap height. Re-measuring stem-to-cap
+ratio the same way put our render's weight low too, but tracking is the correctable half without
+breaking the 400-only display rule — **−0.035em** closes most of the width gap on its own.
 
 ### Text behaviour
 * Headlines wrap **manually** into balanced 2–3 line blocks; never justified, never hyphenated.

@@ -102,7 +102,10 @@ export function Marquee({
 
   return (
     <div className={cn("w-full overflow-hidden", className)} aria-hidden>
-      <div ref={track} className="flex w-max text-marquee text-text-hi">
+      <div
+        ref={track}
+        className="flex w-max text-marquee tracking-[-0.035em] text-text-hi"
+      >
         {Array.from({ length: copies }, (_, i) => (
           <span key={i} className="flex shrink-0 items-center">
             {content}

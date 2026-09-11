@@ -28,7 +28,12 @@ export function Statement() {
         <RuleWithCrosshair className="mt-[80px]" />
 
         <div className="mt-[76px] grid gap-12 lg:grid-cols-[1.83fr_1fr] lg:pl-[139px]">
-          <div className="label-mono text-text-mid">
+          {/*
+            +20% over the shared label-mono size (12px -> 14.4px), scoped to
+            this block only via inline style so the site-wide label-mono
+            utility — used by the nav, badges and captions — is untouched.
+          */}
+          <div className="label-mono text-text-mid" style={{ fontSize: "14.4px" }}>
             {site.about.note.map((line) => (
               <p key={line}>{line}</p>
             ))}

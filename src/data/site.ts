@@ -29,7 +29,7 @@ export const site = {
     label: "ABOUT",
     statement:
       "I'm exploring the intersection of code, AI, and design by building things that matter in the world today.",
-    note: ["I DESIGN FOR LONGEVITY", "CLARITY FIRST, CRAFT ALWAYS,", "BUILT TO SCALE."],
+    note: ["IDEAS ARE EASY TO HAVE.", "BUILDING THEM IS THE FUN PART.", "SO I KEEP BUILDING."],
     mission:
       "My aim is to make software feel human — building products that are intuitive, purposeful and meaningful to the people who use them.", // TODO confirm
     link: { label: "MORE ABOUT ME", href: "/about" },

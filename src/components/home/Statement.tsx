@@ -10,7 +10,7 @@ export function Statement() {
     <ChapterSection
       id="about"
       theme="dark"
-      className="relative bg-dark text-text-hi"
+      className="pointer-events-auto relative text-text-hi"
     >
       <div className="page-x pt-[166px] pb-[200px]">
         <div className="relative">

@@ -1,31 +1,34 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRef } from "react";
 import { ChapterSection } from "@/components/chrome/ChapterTheme";
 import { CursorRing } from "@/components/chrome/CursorRing";
 import { KineticHeadline } from "@/components/primitives/KineticHeadline";
 import { MonoLink } from "@/components/primitives/MonoLink";
-import { useSceneEnabled } from "@/components/three/SceneGate";
 import { site } from "@/data/site";
 
-const HeroMonogram = dynamic(
-  () => import("@/components/three/HeroMonogram").then((m) => m.HeroMonogram),
-  { ssr: false },
-);
-
-/** PAGES §01 — hero. Geometry anchored to frame 013. */
+/**
+ * PAGES §01 — hero. Geometry anchored to frame 013.
+ *
+ * The WebGL mark is not here: it lives in DarkChapters, one sticky layer
+ * behind this section, About and Marquee, because the reference keeps it
+ * visible through all three. What remains here is the hero's own content.
+ *
+ * Everything in this section is pointer-events-none by default, including the
+ * section itself — it sits on top of that canvas, and anything interactive
+ * here would swallow the events the scene needs for its parallax, its
+ * hold-to-blast and its constellation reveals. Interactive children opt back
+ * in one at a time.
+ */
 export function Hero() {
   const stage = useRef<HTMLDivElement>(null);
-  const sceneOn = useSceneEnabled();
 
   return (
     <ChapterSection
       theme="dark"
-      className="relative min-h-svh w-full overflow-hidden bg-dark text-text-hi"
+      className="pointer-events-none relative min-h-svh w-full text-text-hi"
     >
-      <div ref={stage} className="absolute inset-0">
-        {sceneOn ? <HeroMonogram /> : <div className="h-full w-full bg-dark" />}
+      <div ref={stage} className="pointer-events-none absolute inset-0">
         <CursorRing containerRef={stage} />
       </div>
 

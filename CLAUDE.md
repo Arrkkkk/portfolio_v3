@@ -272,4 +272,14 @@ contact details — ask the owner.
   z≈9 plane, so the mark's reflection lands within x,y ∈ ±3 and *any* gap there is a dead patch in
   the middle of the mark. The warm panel covers that window alone; the cool one sits in front of
   part of it. Keep it that way — divide by colour, never by absence of light.
+* **The hero canvas spans the whole dark chapter run** — Hero, About and Marquee — in one sticky
+  layer owned by `DarkChapters`, not clipped inside the Hero section. The reference does this
+  (`PAGES.md` §01 "the canvas persists", §02 "still faintly visible behind", §03 "still drifting
+  behind"; frame 045 shows it plainly), and without it About and Marquee are flat black and read as
+  empty. It unsticks where the wrapper ends, which is the Key Facts boundary A06 describes.
+  `pointer-events-none` on the content wrapper is load-bearing for the same reason it is in the
+  hero: that wrapper covers the canvas for all three chapters, and left interactive it silently
+  kills the parallax, hold-to-blast and constellation reveals while the mark keeps animating, so
+  nothing looks broken. About and Marquee opt back in on their own sections. Verify with
+  `document.elementFromPoint` at the hero centre — it must return `CANVAS`.
 * Every reference section is kept, including the expertise route.

@@ -1,3 +1,4 @@
+import { DarkChapters } from "@/components/home/DarkChapters";
 import { Hero } from "@/components/home/Hero";
 import { Statement } from "@/components/home/Statement";
 import { MarqueeBand } from "@/components/home/MarqueeBand";
@@ -13,9 +14,12 @@ import { FooterCta } from "@/components/home/FooterCta";
 export default function Home() {
   return (
     <>
-      <Hero />
-      <Statement />
-      <MarqueeBand />
+      {/* One canvas behind all three dark chapters — see DarkChapters. */}
+      <DarkChapters>
+        <Hero />
+        <Statement />
+        <MarqueeBand />
+      </DarkChapters>
       <KeyFacts />
       <SelectedWork />
       <CollectionCta />

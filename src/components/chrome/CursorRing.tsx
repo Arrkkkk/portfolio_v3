@@ -19,8 +19,30 @@ export function CursorRing({ containerRef }: { containerRef: React.RefObject<HTM
 
     let tx = 0, ty = 0, x = 0, y = 0, raf = 0, visible = false;
 
+    /*
+     * Listeners live on window rather than the container. The hero's layers are
+     * pointer-events-none so the WebGL canvas behind them still receives the
+     * parallax and blast events, and an element with pointer-events:none never
+     * fires pointer events of its own — bound to the container, the ring would
+     * simply be dead. The container is still the measurement box: it decides
+     * the ring's coordinate space and where it stops being shown.
+     */
     const move = (e: PointerEvent) => {
       const r = container.getBoundingClientRect();
+      const inside =
+        e.clientX >= r.left &&
+        e.clientX <= r.right &&
+        e.clientY >= r.top &&
+        e.clientY <= r.bottom;
+
+      if (!inside) {
+        if (visible) {
+          visible = false;
+          el.style.opacity = "0";
+        }
+        return;
+      }
+
       tx = e.clientX - r.left;
       ty = e.clientY - r.top;
       if (!visible) {
@@ -41,13 +63,13 @@ export function CursorRing({ containerRef }: { containerRef: React.RefObject<HTM
       raf = requestAnimationFrame(tick);
     };
 
-    container.addEventListener("pointermove", move);
-    container.addEventListener("pointerleave", leave);
+    window.addEventListener("pointermove", move, { passive: true });
+    document.addEventListener("pointerleave", leave);
     raf = requestAnimationFrame(tick);
 
     return () => {
-      container.removeEventListener("pointermove", move);
-      container.removeEventListener("pointerleave", leave);
+      window.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerleave", leave);
       cancelAnimationFrame(raf);
     };
   }, [containerRef, fine]);

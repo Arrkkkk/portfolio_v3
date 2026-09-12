@@ -83,7 +83,11 @@ export function ChapterWipe() {
     const bands = Array.from(l.querySelectorAll<HTMLElement>(".cw-band")).reverse();
     const headings = document.querySelector<HTMLElement>(".kf-headings");
     const cards = Array.from(document.querySelectorAll<HTMLElement>(".kf-card"));
-    if (!headings || !cards.length) return;
+    // The marquee is the last section of the dark run, immediately before this
+    // component in the document.
+    const darkSections = a.previousElementSibling?.querySelectorAll("section");
+    const marquee = darkSections?.[darkSections.length - 1] as HTMLElement | undefined;
+    if (!headings || !cards.length || !marquee) return;
 
     const ctx = gsap.context(() => {
       /*
@@ -120,6 +124,32 @@ export function ChapterWipe() {
           },
         },
       });
+
+      /*
+       * Hold the marquee still while the bands fill over it.
+       *
+       * It is counter-translated by exactly the scroll travelled, so it reads
+       * as pinned without actually being pinned. ScrollTrigger's `pin` was the
+       * obvious tool and the wrong one here: with pinSpacing it inserts a
+       * spacer and pushes Key facts down, which is the added scroll distance
+       * that was wrong the first time round; without pinSpacing it drops the
+       * element out of flow and everything below jumps up by its height. A
+       * transform changes no layout at all and unwinds on the way back up.
+       *
+       * It only has to hold while the fill is visible. Once the last band lands
+       * the overlay covers the viewport, so whatever the marquee does
+       * underneath after that cannot be seen.
+       */
+      const fillEnd = BAND_STEP * (BANDS - 1) + BAND_FILL; // 2.2
+      tl.to(
+        marquee,
+        {
+          y: () => ((end() - start()) * fillEnd) / TOTAL,
+          duration: fillEnd,
+          ease: "none",
+        },
+        0,
+      );
 
       bands.forEach((band, i) => {
         tl.fromTo(

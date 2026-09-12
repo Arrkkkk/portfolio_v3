@@ -197,6 +197,26 @@ export function ChapterWipe() {
       );
 
       /*
+       * The blur resolve is one beat of this sequence, not a reaction to the
+       * heading scrolling into view. Left to its own `top 75%` trigger it fired
+       * on the transformed element's position — long after the cue — so the
+       * heading rose on time and arrived invisible, which is why the wipe kept
+       * looking right with nothing ever appearing in it.
+       */
+      tl.to(
+        headings.querySelectorAll(".blur-char"),
+        {
+          opacity: 1,
+          filter: "blur(0px)",
+          y: 0,
+          duration: HEAD_RUN * 0.6,
+          ease: "none",
+          stagger: { each: 0.012, from: "random" },
+        },
+        HEAD_CUE,
+      );
+
+      /*
        * (f) The cards, unchanged in geometry — only the cue moved.
        *
        * set + to, not fromTo. Inside a scrubbed timeline a staggered fromTo
@@ -232,9 +252,15 @@ export function ChapterWipe() {
       <div
         ref={layer}
         aria-hidden
-        // z-50 keeps it under the header (z-60), which stays legible
-        // throughout and inverts on Key facts' own chapter registration.
-        className="pointer-events-none fixed inset-0 z-50"
+        /*
+         * z-20 sits above the dark chapter (z-10) so the bands paint over it,
+         * and below the Key facts headings and cards (z-30) so those show
+         * through once their cues fire. At z-50 this sheet covered Key facts
+         * outright: the headings rose exactly on time and were invisible
+         * underneath it, which is why the wipe looked right and nothing ever
+         * arrived. Still under the header at z-60.
+         */
+        className="pointer-events-none fixed inset-0 z-20"
         style={{ visibility: "hidden" }}
       >
         {Array.from({ length: BANDS }, (_, i) => (

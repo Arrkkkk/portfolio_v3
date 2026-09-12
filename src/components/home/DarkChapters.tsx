@@ -74,7 +74,7 @@ export function DarkChapters({ children }: { children: React.ReactNode }) {
   }, [sceneOn, reduced]);
 
   return (
-    <div ref={wrap} className="relative bg-dark">
+    <div ref={wrap} className="relative z-10 bg-dark">
       <div ref={layer} className="sticky top-0 z-0 h-svh w-full">
         {sceneOn ? <HeroMonogram /> : null}
       </div>

@@ -13,6 +13,14 @@ type Props = {
   className?: string;
   /** Play immediately instead of waiting for the scroll trigger (hero entrance). */
   immediate?: boolean;
+  /**
+   * Hold the glyphs blurred and create no trigger of its own, so an outside
+   * timeline can resolve them on its own cue. Used where the resolve is one
+   * beat of a longer sequence rather than a reaction to the heading scrolling
+   * into view — its own trigger would fire on the element's position and land
+   * wherever that happens to be.
+   */
+  manual?: boolean;
   delay?: number;
 };
 
@@ -28,6 +36,7 @@ export function BlurText({
   as: Tag = "span",
   className,
   immediate = false,
+  manual = false,
   delay = 0,
 }: Props) {
   const ref = useRef<HTMLElement>(null);
@@ -58,7 +67,9 @@ export function BlurText({
         stagger: { each: 0.03, from: "random" as const },
       };
 
-      if (immediate) {
+      if (manual) {
+        gsap.set(chars, from);
+      } else if (immediate) {
         gsap.fromTo(chars, from, to);
       } else {
         gsap.fromTo(chars, from, {
@@ -69,7 +80,7 @@ export function BlurText({
     }, el);
 
     return () => ctx.revert();
-  }, [reduced, immediate, delay, text]);
+  }, [reduced, immediate, manual, delay, text]);
 
   return (
     <Tag ref={ref as never} className={cn(className)}>

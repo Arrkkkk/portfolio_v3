@@ -45,8 +45,8 @@ export function KeyFacts() {
       className="bg-[linear-gradient(180deg,#dadada_0%,#fdfdfd_60%,#ffffff_100%)] text-ink"
     >
       <div ref={root} className="page-x py-[120px]">
-        <div className="kf-headings text-center">
-          <BlurText as="h2" text="Key facts" className="text-display track-display" />
+        <div className="kf-headings relative z-30 text-center">
+          <BlurText manual as="h2" text="Key facts" className="text-display track-display" />
           <p className="mx-auto mt-5 max-w-[240px] text-[14px] leading-[1.3] text-ink-mid">
             A snapshot of my experience and impact.
           </p>
@@ -58,7 +58,7 @@ export function KeyFacts() {
           measured −19.7% taper then implies perspective ≈ 1335px.
         */}
         <div
-          className="mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          className="relative z-30 mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ perspective: "1335px" }}
         >
           {stats.map((s) => (

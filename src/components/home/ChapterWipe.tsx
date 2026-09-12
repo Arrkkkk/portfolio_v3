@@ -154,6 +154,19 @@ export function ChapterWipe() {
         0,
       );
 
+      /*
+       * ...and put it back. The hold has to be undone or the dark chapter stays
+       * displaced by the full fill distance for the rest of the page: the
+       * overlay hides when the trigger deactivates and exposes it, which is
+       * exactly what happened — Key facts drawn over a marquee sitting 667px
+       * out of position.
+       *
+       * It unwinds between the last band landing and the point where Key facts
+       * covers the viewport on its own, so the snap back happens underneath a
+       * fully opaque overlay and cannot be seen.
+       */
+      tl.to(dark, { y: 0, duration: 0.4, ease: "none" }, fillEnd);
+
       bands.forEach((band, i) => {
         tl.fromTo(
           band,

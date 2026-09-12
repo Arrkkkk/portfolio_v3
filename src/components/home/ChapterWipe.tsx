@@ -83,11 +83,14 @@ export function ChapterWipe() {
     const bands = Array.from(l.querySelectorAll<HTMLElement>(".cw-band")).reverse();
     const headings = document.querySelector<HTMLElement>(".kf-headings");
     const cards = Array.from(document.querySelectorAll<HTMLElement>(".kf-card"));
-    // The marquee is the last section of the dark run, immediately before this
-    // component in the document.
-    const darkSections = a.previousElementSibling?.querySelectorAll("section");
-    const marquee = darkSections?.[darkSections.length - 1] as HTMLElement | undefined;
-    if (!headings || !cards.length || !marquee) return;
+    // The whole dark run, not just its last section. The mark lives in the
+    // sticky canvas layer inside this wrapper, and that layer reaches the end
+    // of its container partway through the fill and starts unsticking — so
+    // holding the marquee section alone left the symbol sliding out from under
+    // frozen words. Key facts moves over the dark chapter; the dark chapter
+    // does not move at all.
+    const dark = a.previousElementSibling as HTMLElement | null;
+    if (!headings || !cards.length || !dark) return;
 
     const ctx = gsap.context(() => {
       /*
@@ -142,7 +145,7 @@ export function ChapterWipe() {
        */
       const fillEnd = BAND_STEP * (BANDS - 1) + BAND_FILL; // 2.2
       tl.to(
-        marquee,
+        dark,
         {
           y: () => ((end() - start()) * fillEnd) / TOTAL,
           duration: fillEnd,

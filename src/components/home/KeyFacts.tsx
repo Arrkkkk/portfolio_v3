@@ -44,8 +44,17 @@ export function KeyFacts() {
       theme="light"
       className="bg-[linear-gradient(180deg,#dadada_0%,#fdfdfd_60%,#ffffff_100%)] text-ink"
     >
-      <div ref={root} className="page-x py-[120px]">
-        <div className="kf-headings relative z-30 text-center">
+      {/*
+        z-30 on the content, not on the section. Everything inside rides above
+        the wipe overlay (z-20) so it scrolls in continuously, while the
+        section's own background stays below it — the background must not lift,
+        or it shows above the fill line while the bands are still arriving.
+        Lifting only the headings and the cards left the tools row underneath,
+        so it stayed hidden until the overlay switched off and then appeared all
+        at once instead of scrolling in.
+      */}
+      <div ref={root} className="relative z-30 page-x py-[120px]">
+        <div className="kf-headings text-center">
           <BlurText manual as="h2" text="Key facts" className="text-display track-display" />
           <p className="mx-auto mt-5 max-w-[240px] text-[14px] leading-[1.3] text-ink-mid">
             A snapshot of my experience and impact.
@@ -58,7 +67,7 @@ export function KeyFacts() {
           measured −19.7% taper then implies perspective ≈ 1335px.
         */}
         <div
-          className="relative z-30 mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          className="mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ perspective: "1335px" }}
         >
           {stats.map((s) => (

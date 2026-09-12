@@ -20,10 +20,11 @@ export default function Home() {
         <Hero />
         <Statement />
         <MarqueeBand />
-        {/* dark -> light band wipe; must sit inside the wrapper so the sticky
-            canvas still shows through the bands that haven't filled yet. */}
-        <ChapterWipe />
       </DarkChapters>
+      {/* Zero-height anchor + fixed overlay. Adds no scroll distance: it is
+          scrubbed across Key facts' own entry, so the marquee is still leaving
+          and Key facts still rising while the bands fill. */}
+      <ChapterWipe />
       <KeyFacts />
       <SelectedWork />
       <CollectionCta />

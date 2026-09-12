@@ -52,6 +52,15 @@ const BANDS = 5;
  * other than the same gradient in the same place shows up as a colour jump at
  * the hand-off. Keep in step with the class on that section.
  */
+/**
+ * Stretches the scroll the sequence is spread across, without altering the
+ * sequence itself — every cue keeps its position in the timeline, so the same
+ * amount of transition simply takes this much more scrolling to get through.
+ * The window's start is cued to the marquee sitting centred, so the extra goes
+ * on the end.
+ */
+const STRETCH = 1.2;
+
 const CHAPTER_BG = "linear-gradient(180deg,#dadada 0%,#fdfdfd 60%,#ffffff 100%)";
 
 /**
@@ -115,9 +124,12 @@ export function ChapterWipe() {
       };
       const end = () => {
         const g = cards[0].parentElement as HTMLElement;
-        // Stop while the cards are still comfortably on screen: finishing the
-        // rotation above the fold is the bug that made the old rewind invisible.
-        return g.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.15;
+        // Where the cards have had their own scroll to finish in, with the grid
+        // still on screen: finishing the rotation above the fold is the bug
+        // that made the old rewind invisible.
+        const natural =
+          g.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.15;
+        return start() + (natural - start()) * STRETCH;
       };
 
       const tl = gsap.timeline({

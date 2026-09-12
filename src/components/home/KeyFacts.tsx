@@ -135,9 +135,17 @@ export function KeyFacts() {
           ))}
         </div>
 
-        <div className="mt-[116px] text-center">
-          <p className="label-mono text-ink-mid">{toolsLabel}</p>
-          <ul className="mx-auto mt-8 flex max-w-[690px] flex-wrap items-center justify-center">
+        {/*
+          `kf-tools` and `kf-tools-list` are ChapterWipe's hooks: it resolves
+          this label's blur-chars and fades the list in together, cued to the
+          third card's own rotation rather than to this block's position in
+          the document. Left to normal document flow it only appeared once
+          scrolled into view, which read as popping in rather than arriving as
+          part of the sequence everything above it is already part of.
+        */}
+        <div className="kf-tools mt-[116px] text-center">
+          <BlurText manual as="p" text={toolsLabel} className="label-mono text-ink-mid" />
+          <ul className="kf-tools-list mx-auto mt-8 flex max-w-[690px] flex-wrap items-center justify-center">
             {tools.map((t, i) => (
               <li
                 key={t}

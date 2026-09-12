@@ -132,6 +132,20 @@ export function ChapterWipe() {
         return start() + (natural - start()) * STRETCH;
       };
 
+      /*
+       * The document-absolute top of Key facts, read once rather than every
+       * frame. The section itself is never transformed — only its children
+       * are — so this is a constant for the life of the page and doesn't need
+       * re-reading. Comparing window.scrollY against it is what decides when
+       * the overlay is redundant; doing that instead of re-reading the
+       * section's rect inside onUpdate removes a live layout read from the
+       * hot path, which is one less place a stale value could leave the
+       * overlay stuck showing over the next section.
+       */
+      const kfDocTop = () =>
+        (headings.closest("section") as HTMLElement).getBoundingClientRect().top +
+        window.scrollY;
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: a,
@@ -162,13 +176,15 @@ export function ChapterWipe() {
             });
             /*
              * The overlay exists to cover the dark chapter while Key facts
-             * arrives. The moment that section reaches the top of the viewport
-             * it covers everything by itself and the overlay is redundant —
-             * worse than redundant, since it keeps painting a full screen of
-             * this chapter's gradient over whatever is actually there. Held to
-             * the end of the window it was covering 557px of the next section.
+             * arrives. The moment that section's top reaches the top of the
+             * viewport it covers everything by itself and the overlay is
+             * redundant — worse than redundant, since it keeps painting a full
+             * screen of this chapter's gradient over whatever is actually
+             * there. Compared against window.scrollY rather than a fresh rect
+             * read: same condition, no live layout dependency.
              */
-            l.style.visibility = self.isActive && top > 0 ? "visible" : "hidden";
+            l.style.visibility =
+              self.isActive && window.scrollY < kfDocTop() ? "visible" : "hidden";
           },
         },
       });
@@ -290,6 +306,44 @@ export function ChapterWipe() {
         },
         CARD_CUE,
       );
+
+      /*
+       * The tools row, cued to the third card's own rotation rather than to
+       * where it sits in the document. It used to just be plain content below
+       * the grid, so it only appeared once scrolled into view naturally — a
+       * pop, disconnected from everything the sequence above it was doing.
+       *
+       * "Third card" is the rightmost one: cards stagger left→right, so index
+       * 2 is the one whose own tween starts last. On this linear (ease: none)
+       * tween, half its own duration is exactly half its rotation — card 3's
+       * tween runs from CARD_CUE + 2·CARD_STAGGER to +CARD_RUN, so halfway is
+       * that start plus CARD_RUN / 2.
+       */
+      const card3Start = CARD_CUE + 2 * CARD_STAGGER;
+      const card3Half = card3Start + CARD_RUN / 2;
+
+      const toolsWrap = document.querySelector<HTMLElement>(".kf-tools");
+      const toolsList = document.querySelector<HTMLElement>(".kf-tools-list");
+      if (toolsWrap && toolsList) {
+        gsap.set(toolsList, { opacity: 0, filter: "blur(8px)" });
+        tl.to(
+          toolsWrap.querySelectorAll(".blur-char"),
+          {
+            opacity: 1,
+            filter: "blur(0px)",
+            y: 0,
+            duration: 0.4,
+            ease: "none",
+            stagger: { each: 0.012, from: "random" },
+          },
+          card3Half,
+        );
+        tl.to(
+          toolsList,
+          { opacity: 1, filter: "blur(0px)", duration: 0.4, ease: "none" },
+          card3Half,
+        );
+      }
     }, a);
 
     return () => ctx.revert();

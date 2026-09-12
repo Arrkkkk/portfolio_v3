@@ -108,6 +108,10 @@ asymmetry is a **shared** vanishing point at the grid's centre pulling the outer
 **Final** neutral.
 **Duration** ~1.1 s; **stagger** ~0.145 s left→right — frame 082 catches the three cards at ~95% /
 ~77% / 59% of final height, a 36-point spread that 0.08 s cannot produce (it measures 16).
+**Replay** `toggleActions: "restart none none reverse"` — it runs every time the section is scrolled
+into, not once per page load. The recording is a single pass so this is **NOT OBSERVABLE** from the
+frames; it is a deliberate choice. The rewind is invisible in practice: at the `top 75%` trigger the
+cards sit ~1240px down a 951px viewport, well below the fold.
 **Extra** the section title `Key facts` itself resolves out of a per-glyph blur (frame 079:
 `K   f cts`). Same technique as A02.
 

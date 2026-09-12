@@ -39,32 +39,57 @@ export function KeyFacts() {
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
       const cards = gsap.utils.toArray<HTMLElement>(".kf-card");
-      gsap.from(cards, {
-        // Hinge from the top edge — that's what pins the top width at 330.
-        transformOrigin: "50% 0%",
-        // No transformPerspective here: perspective belongs on the grid (see
-        // the container's style) so all three cards share one vanishing point
-        // at its centre. Per-card perspective centres the vanishing point on
-        // each card and tapers them symmetrically; a shared one makes the
-        // outer cards converge inward, which is what the frames show — the
-        // right card's right edge drifts 97px left against its own left edge's
-        // 33px. That asymmetry is the shared vanishing point, not a rotateY.
-        rotateX: -70,
-        opacity: 0,
-        duration: 1.1,
-        ease: "expo.out",
-        // 0.17, not the 0.08 originally inferred. In frame 082 the three
-        // cards sit at ~95% / ~77% / 59% of final height — a 36-point spread.
-        // On this expo.out curve that is ~0.30 of the duration between the
-        // first card and the last, solved to 0.145 per step by
-        // measurement: 0.08 gave a 16-point spread, 0.17 gave 59.
-        stagger: 0.145,
-        // Softens edges mid-rotation in some browsers; dropped on completion
-        // so it doesn't pin a layer for the life of the page.
-        onStart: () => cards.forEach((c) => (c.style.willChange = "transform")),
-        onComplete: () => cards.forEach((c) => (c.style.willChange = "")),
-        scrollTrigger: { trigger: el, start: "top 75%", once: true },
-      });
+      const hint = (on: boolean) =>
+        cards.forEach((c) => (c.style.willChange = on ? "transform" : ""));
+
+      /*
+       * fromTo, not from, and no `once`. `once: true` killed the trigger after
+       * the first fire, so the entrance could only be seen by reloading the
+       * page. Both endpoints are written out explicitly because the tween now
+       * has to be re-runnable in both directions — `from` infers its end state
+       * from whatever the element happens to be at when it first renders,
+       * which is not something to depend on once a tween replays.
+       */
+      gsap.fromTo(
+        cards,
+        {
+          // Hinge from the top edge — that's what pins the top width at 330.
+          transformOrigin: "50% 0%",
+          // No transformPerspective here: perspective belongs on the grid (see
+          // the container's style) so all three cards share one vanishing point
+          // at its centre. Per-card perspective centres the vanishing point on
+          // each card and tapers them symmetrically; a shared one makes the
+          // outer cards converge inward, which is what the frames show — the
+          // right card's right edge drifts 97px left against its own left
+          // edge's 33px. That asymmetry is the shared vanishing point, not a
+          // rotateY.
+          rotateX: -70,
+          opacity: 0,
+        },
+        {
+          rotateX: 0,
+          opacity: 1,
+          duration: 1.1,
+          ease: "expo.out",
+          // 0.145, not the 0.08 originally inferred. In frame 082 the three
+          // cards sit at ~95% / ~77% / 59% of final height — a 36-point
+          // spread. Measured: 0.08 gave 16 points, 0.17 gave 59.
+          stagger: 0.145,
+          // Softens edges mid-rotation in some browsers; dropped whenever the
+          // tween comes to rest, in either direction, so it never pins a layer
+          // for the life of the page.
+          onStart: () => hint(true),
+          onComplete: () => hint(false),
+          onReverseComplete: () => hint(false),
+          scrollTrigger: {
+            trigger: el,
+            start: "top 75%",
+            // Replays every time the section is scrolled into, and rewinds
+            // when it leaves upward so the next approach starts from flat.
+            toggleActions: "restart none none reverse",
+          },
+        },
+      );
     }, el);
     return () => ctx.revert();
   }, [reduced]);

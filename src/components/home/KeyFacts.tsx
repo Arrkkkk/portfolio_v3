@@ -10,7 +10,24 @@ import { stats, tools, toolsLabel } from "@/data/stats";
 
 /**
  * PAGES §04 / A08 — three 330 × 407 cards in a centred 1032px container with
- * 20px gaps, rising in with a left→right stagger. Geometry from frame 088.
+ * 20px gaps. Geometry from frame 088.
+ *
+ * The cards enter under a real 3D perspective rotation, hinged on their top
+ * edge, not the 2D rise that was here before. ANIMATIONS.md noted "a single
+ * small skewed placeholder" in frame 081 and then inferred
+ * `opacity/y:40/scale:.97` anyway; measuring the silhouette disproves it.
+ *
+ * Right-hand card, measured off the frames (CSS px, final size 330 × 407):
+ *
+ *   frame 082   height 241 (59%)   top 323   bottom 260   taper −19.7%
+ *   frame 083   height 315 (77%)   top 327   bottom 287   taper −12.3%
+ *   settled     height 407         top 330   bottom 330   taper 0
+ *
+ * Two things follow. Within frame 082 the width narrows 323 → 298 → 259.5 over
+ * equal height steps — accelerating, which only a perspective divide does; an
+ * affine skew holds width constant and a linear scale narrows evenly. And the
+ * top edge sits at its final 330 throughout while the bottom sweeps in, so the
+ * hinge is the top edge and the bottom is the far edge.
  */
 export function KeyFacts() {
   const root = useRef<HTMLDivElement>(null);
@@ -21,13 +38,31 @@ export function KeyFacts() {
     if (!el || reduced) return;
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
-      gsap.from(".kf-card", {
+      const cards = gsap.utils.toArray<HTMLElement>(".kf-card");
+      gsap.from(cards, {
+        // Hinge from the top edge — that's what pins the top width at 330.
+        transformOrigin: "50% 0%",
+        // No transformPerspective here: perspective belongs on the grid (see
+        // the container's style) so all three cards share one vanishing point
+        // at its centre. Per-card perspective centres the vanishing point on
+        // each card and tapers them symmetrically; a shared one makes the
+        // outer cards converge inward, which is what the frames show — the
+        // right card's right edge drifts 97px left against its own left edge's
+        // 33px. That asymmetry is the shared vanishing point, not a rotateY.
+        rotateX: -70,
         opacity: 0,
-        y: 40,
-        scale: 0.97,
-        duration: 1,
+        duration: 1.1,
         ease: "expo.out",
-        stagger: 0.08,
+        // 0.17, not the 0.08 originally inferred. In frame 082 the three
+        // cards sit at ~95% / ~77% / 59% of final height — a 36-point spread.
+        // On this expo.out curve that is ~0.30 of the duration between the
+        // first card and the last, solved to 0.145 per step by
+        // measurement: 0.08 gave a 16-point spread, 0.17 gave 59.
+        stagger: 0.145,
+        // Softens edges mid-rotation in some browsers; dropped on completion
+        // so it doesn't pin a layer for the life of the page.
+        onStart: () => cards.forEach((c) => (c.style.willChange = "transform")),
+        onComplete: () => cards.forEach((c) => (c.style.willChange = "")),
         scrollTrigger: { trigger: el, start: "top 75%", once: true },
       });
     }, el);
@@ -47,7 +82,15 @@ export function KeyFacts() {
           </p>
         </div>
 
-        <div className="mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/*
+          Solved from the frames rather than picked: at 59% of final height the
+          card is rotated ~53.8°, putting its bottom edge ~328px back, and the
+          measured −19.7% taper then implies perspective ≈ 1335px.
+        */}
+        <div
+          className="mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          style={{ perspective: "1335px" }}
+        >
           {stats.map((s) => (
             <article
               key={s.label}

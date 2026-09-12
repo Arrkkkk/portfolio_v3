@@ -115,7 +115,10 @@ scroll-velocity-driven skew/speed boost. `HIGH-CONFIDENCE INFERENCE`
   `1.5K⁺` at 40 px inside it, 14 px 2-line copy bottom-centre.
 * *dark card* — `--card-dark`, `label-mono` top-centre, inset 266 × 220 image, copy bottom-left,
   numeral `20⁺` bottom-right.
-**Animation** cards rise + fade in with a ~0.08 s stagger as the section enters (frames 081–085).
+**Animation** cards rotate up from `rotateX: −70°`, hinged on their top edge under a perspective
+shared across the grid, fading in with a ~0.145 s left→right stagger as the section enters
+(frames 081–085). See `ANIMATIONS.md` §A08 for the measurements — this is a 3D rotation, not the
+rise/scale-fade previously recorded here.
 
 ## 14. PartnerRow
 `label-mono` centred (`OUR BUSINESS PARTNERS`), then 5 wordmarks in a centred row with 1 px vertical

@@ -85,10 +85,29 @@ during fast-scroll frames. `LOW-CONFIDENCE INFERENCE`
 ## A08 — Key facts entrance
 **Element** 3 stat cards + partner row.
 **Trigger** section enters viewport.
-**Initial** `opacity: 0; y: +40px; scale: .97` (frame 081 shows a single small skewed placeholder,
-frame 082 shows the cards partially formed).
+**Initial** `opacity: 0; rotateX: −70°` about `transform-origin: 50% 0%`, under a **shared
+perspective of ~1335px on the card grid** (not per-card). `OBSERVED` — corrected from the earlier
+`opacity/y:+40/scale:.97` inference, which was wrong. The "small skewed placeholder" in frame 081 is
+the effect itself, not a placeholder.
+
+Measured silhouette of the right-hand card (CSS px; final size 330 × 407):
+
+| frame | height | top edge | bottom edge | taper |
+|---|---|---|---|---|
+| 082 | 241 (59%) | 323 | 260 | −19.7% |
+| 083 | 315 (77%) | 327 | 287 | −12.3% |
+| settled | 407 | 330 | 330 | 0 |
+
+Three things this pins down. Within frame 082 the width narrows 323 → 298 → 259.5 over equal height
+steps — *accelerating*, which only a perspective divide produces; an affine skew holds width constant
+and a linear scale narrows evenly. The top edge sits at its final 330 throughout, so the hinge is the
+top edge. And the right card's right edge drifts 97px left against its own left edge's 33px — that
+asymmetry is a **shared** vanishing point at the grid's centre pulling the outer cards inward, not a
+`rotateY`; per-card perspective would taper each card symmetrically.
+
 **Final** neutral.
-**Duration** ~1 s; **stagger** ~0.08 s left→right. `HIGH-CONFIDENCE INFERENCE`
+**Duration** ~1.1 s; **stagger** ~0.145 s left→right — frame 082 catches the three cards at ~95% /
+~77% / 59% of final height, a 36-point spread that 0.08 s cannot produce (it measures 16).
 **Extra** the section title `Key facts` itself resolves out of a per-glyph blur (frame 079:
 `K   f cts`). Same technique as A02.
 

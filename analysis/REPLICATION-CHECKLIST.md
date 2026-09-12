@@ -133,7 +133,10 @@ Known deltas from the reference, accepted for now:
   `CLAUDE.md` both already flagged those frames. The reference's real transition is A06, a hard edge
   scrolling up. Owner asked for the banded look deliberately after being shown this. Do not "restore"
   it to A06. The five-band geometry is at least grounded: the tear lines fall at 190/380/571/761 CSS
-  px against a 951px viewport, within a pixel of exact fifths.
+  px against a 951px viewport, within a pixel of exact fifths. Timing is the owner's spec: each band
+  starts when the one below is 30% full; the Key facts headings rise as band 3 passes 90%; the cards
+  begin as band 4 completes and finish over their own scroll. `ChapterWipe` owns that whole sequence
+  as one scrubbed timeline — the card rotation moved out of `KeyFacts` so the beats stay phase-locked.
 * **A08 is scrubbed to scroll, not timed.** The frames show a timed ~1.1 s entrance; we bind the
   rotation to scroll position so it rewinds visibly when scrolling back up. Owner's call. The
   silhouette geometry (rotateX, top-edge hinge, shared ~1335px perspective, stagger) is unchanged and

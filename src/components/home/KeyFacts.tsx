@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useRef } from "react";
 import { ChapterSection } from "@/components/chrome/ChapterTheme";
 import { BlurText } from "@/components/primitives/BlurText";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { stats, tools, toolsLabel } from "@/data/stats";
 
 /**
@@ -31,85 +28,16 @@ import { stats, tools, toolsLabel } from "@/data/stats";
  */
 export function KeyFacts() {
   const root = useRef<HTMLDivElement>(null);
-  const grid = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
 
-  useEffect(() => {
-    const el = root.current;
-    if (!el || !grid.current || reduced) return;
-    gsap.registerPlugin(ScrollTrigger);
-    const ctx = gsap.context(() => {
-      const cards = gsap.utils.toArray<HTMLElement>(".kf-card");
-      const hint = (on: boolean) =>
-        cards.forEach((c) => (c.style.willChange = on ? "transform" : ""));
-
-      /*
-       * Scrubbed, not timed. A timed tween reversed at a single trigger point,
-       * and that point put the cards ~1050px down a 951px viewport — so the
-       * rewind was real but never visible. Bound to scroll position instead,
-       * the rotation tracks the scrollbar in both directions: down unfolds the
-       * cards, up folds them back, at whatever pace you scroll.
-       *
-       * This is a deliberate deviation from the measured A08, which is a timed
-       * ~1.1s entrance. Under a scrub the duration is governed by the scroll
-       * range rather than by time, so the 1.1s no longer applies; the stagger
-       * survives as a proportion of that range, which is what keeps the
-       * left→right cascade. Nothing in the frames covers scrolling back up —
-       * the recording is a single downward pass — so there is no reference
-       * behaviour being contradicted here. Logged in REPLICATION-CHECKLIST.md.
-       *
-       * `ease: "none"` because the tween is now driven by scroll: any easing
-       * would decouple the cards from the scrollbar and undo the point of it.
-       *
-       * fromTo, not from: both endpoints have to be explicit for a tween that
-       * is scrubbed through in both directions.
-       */
-      gsap.fromTo(
-        cards,
-        {
-          // Hinge from the top edge — that's what pins the top width at 330.
-          transformOrigin: "50% 0%",
-          // No transformPerspective here: perspective belongs on the grid (see
-          // the container's style) so all three cards share one vanishing point
-          // at its centre. Per-card perspective centres the vanishing point on
-          // each card and tapers them symmetrically; a shared one makes the
-          // outer cards converge inward, which is what the frames show — the
-          // right card's right edge drifts 97px left against its own left
-          // edge's 33px. That asymmetry is the shared vanishing point, not a
-          // rotateY.
-          rotateX: -70,
-          opacity: 0,
-        },
-        {
-          rotateX: 0,
-          opacity: 1,
-          duration: 1.1,
-          ease: "none",
-          // Kept from the frame measurements: in frame 082 the three cards sit
-          // at ~95% / ~77% / 59% of final height. Scrubbed, this reads as a
-          // spatial cascade rather than a temporal one, but the offset between
-          // cards is the same proportion of the run.
-          stagger: 0.145,
-          scrollTrigger: {
-            // The grid, not the section: the range has to be anchored to where
-            // the cards actually are, or it maps to scroll positions at which
-            // they are off-screen — which is exactly what went wrong before.
-            trigger: grid.current!,
-            start: "top 92%",
-            end: "top 38%",
-            // A little smoothing so the cards glide rather than snap to every
-            // wheel tick; still fully scroll-bound in both directions.
-            scrub: 0.6,
-            // Hint only while the rotation is live. On a scrub, tween
-            // onStart/onComplete fire repeatedly as you scrub across the
-            // endpoints, so the trigger's own active state is the right signal.
-            onToggle: (self) => hint(self.isActive),
-          },
-        },
-      );
-    }, el);
-    return () => ctx.revert();
-  }, [reduced]);
+  /*
+   * No ScrollTrigger here any more. The card rotation is one beat in a single
+   * sequence that also drives the band wipe and this heading, and that sequence
+   * is cued off the bands — the cards start as the fourth band fills. Splitting
+   * it across two components meant two triggers that could not be phase-locked,
+   * so ChapterWipe owns the whole timeline and reaches in via `.kf-card` and
+   * `.kf-headings`. The geometry lives here (the grid's shared perspective);
+   * only the timing moved.
+   */
 
   return (
     <ChapterSection
@@ -117,7 +45,7 @@ export function KeyFacts() {
       className="bg-[linear-gradient(180deg,#dadada_0%,#fdfdfd_60%,#ffffff_100%)] text-ink"
     >
       <div ref={root} className="page-x py-[120px]">
-        <div className="text-center">
+        <div className="kf-headings text-center">
           <BlurText as="h2" text="Key facts" className="text-display track-display" />
           <p className="mx-auto mt-5 max-w-[240px] text-[14px] leading-[1.3] text-ink-mid">
             A snapshot of my experience and impact.
@@ -130,7 +58,6 @@ export function KeyFacts() {
           measured −19.7% taper then implies perspective ≈ 1335px.
         */}
         <div
-          ref={grid}
           className="mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ perspective: "1335px" }}
         >

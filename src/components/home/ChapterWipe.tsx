@@ -45,6 +45,28 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 const BANDS = 5;
 
+/**
+ * One band takes 1 unit to fill; the next starts when it is 30% full, so
+ * consecutive bands sit a constant 30 points apart:
+ *
+ *   band 1 (bottom) 0.0 → 1.0      t=0.3  b1 30%, b2 starts
+ *   band 2          0.3 → 1.3      t=0.6  b1 60%, b2 30%, b3 starts
+ *   band 3          0.6 → 1.6      t=0.9  b1 90%, b2 60%, b3 30%, b4 starts
+ *   band 4          0.9 → 1.9      t=1.2  b1 100%, b2 90%, b3 60%, b4 30%, b5 starts
+ *   band 5 (top)    1.2 → 2.2
+ */
+const BAND_FILL = 1;
+const BAND_STEP = 0.3;
+/** (e) the headings rise as band 3 passes 90% — it starts at 0.6, so 1.5. */
+const HEAD_CUE = 1.5;
+const HEAD_RUN = 0.9;
+/** (f) the cards begin as band 4 completes. It starts at 0.9, so 1.9. */
+const CARD_CUE = 1.9;
+/** Cards finish over their own scroll after the cue, per the owner's choice. */
+const CARD_RUN = 1.5;
+const CARD_STAGGER = 0.198; // same stagger:duration ratio as the tuned 0.145/1.1
+const TOTAL = CARD_CUE + CARD_RUN + CARD_STAGGER * 2;
+
 export function ChapterWipe() {
   const anchor = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -56,57 +78,104 @@ export function ChapterWipe() {
     if (!a || !l || reduced) return;
 
     gsap.registerPlugin(ScrollTrigger);
-    // The bands are queried off the overlay, not selected inside a context
-    // scoped to the anchor — the anchor is empty, so a ".cw-band" selector
-    // there matches nothing and the tween silently does nothing at all.
-    const bands = Array.from(l.querySelectorAll<HTMLElement>(".cw-band"));
+
+    // Bottom band first: the cascade runs up the screen.
+    const bands = Array.from(l.querySelectorAll<HTMLElement>(".cw-band")).reverse();
+    const headings = document.querySelector<HTMLElement>(".kf-headings");
+    const cards = Array.from(document.querySelectorAll<HTMLElement>(".kf-card"));
+    if (!headings || !cards.length) return;
+
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        bands,
-        // inset(100% …) clips the band away from its top edge down, leaving a
-        // zero-height sliver at the bottom. Shrinking that inset grows the fill
-        // upward from the bottom.
-        { clipPath: "inset(100% 0% 0% 0%)" },
-        {
-          clipPath: "inset(0% 0% 0% 0%)",
-          duration: 1,
-          /*
-           * `from: "end"` starts the cascade at the last element — the bottom
-           * band. The ratio to `duration` sets how much dark is left showing
-           * between two filling bands, and that gap is what makes this read as
-           * bands at all: a band fills from its own bottom edge, so while the
-           * band below is only f full, a strip of height (1-f)·190px is still
-           * dark between the two. At 0.8 that strip is 38px and the whole thing
-           * collapses into one hard edge. 0.55 leaves ~86px, which is close to
-           * the gaps in the reference captures and still reads as "the one
-           * below is nearly done before the next starts".
-           */
-          stagger: { each: 0.55, from: "end" },
-          // Scroll-driven, so no easing — a curve would decouple the fill from
-          // the scrollbar.
-          ease: "none",
-          scrollTrigger: {
-            trigger: a,
-            // The anchor sits exactly at the dark/light boundary, so this is
-            // Key facts' own entry: top of the viewport to the bottom of it,
-            // one screen of scrolling the page already had.
-            start: "top bottom",
-            end: "top top",
-            scrub: 0.4,
-            // Outside the window the overlay must not be on screen at all:
-            // past the end every band is full, which would leave a sheet of
-            // #dadada sitting over the rest of the page.
-            onToggle: (self) => {
-              l.style.visibility = self.isActive ? "visible" : "hidden";
-            },
+      /*
+       * The window runs from the marquee sitting centred to the point where the
+       * cards have had their own scroll to finish in — measured, not guessed,
+       * and recomputed on refresh so a resize does not strand the cues.
+       *
+       * It adds no scroll distance: this is all scrolling the page already had.
+       */
+      const start = () => {
+        const kf = headings.closest("section") as HTMLElement;
+        return kf.getBoundingClientRect().top + window.scrollY - window.innerHeight;
+      };
+      const end = () => {
+        const g = cards[0].parentElement as HTMLElement;
+        // Stop while the cards are still comfortably on screen: finishing the
+        // rotation above the fold is the bug that made the old rewind invisible.
+        return g.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.15;
+      };
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: a,
+          // Raw scroll positions. Expressed as a "top Xpx" string this was
+          // being resolved against the trigger's own offset and landed the
+          // whole sequence near the end of the window; a function returning a
+          // number is taken as the scroll value itself, which is what we want.
+          start,
+          end,
+          scrub: 0.4,
+          invalidateOnRefresh: true,
+          onToggle: (self) => {
+            l.style.visibility = self.isActive ? "visible" : "hidden";
           },
         },
+      });
+
+      bands.forEach((band, i) => {
+        tl.fromTo(
+          band,
+          // inset(100% …) leaves a zero-height sliver at the band's bottom;
+          // shrinking the inset grows the fill upward from there.
+          { clipPath: "inset(100% 0% 0% 0%)" },
+          { clipPath: "inset(0% 0% 0% 0%)", duration: BAND_FILL, ease: "none" },
+          i * BAND_STEP,
+        );
+      });
+
+      /*
+       * (e) The headings rise from below the fold. Their natural position at the
+       * cue is measured off the live layout rather than assumed, so the travel
+       * is exactly "from the bottom edge of the screen" whatever the viewport is.
+       */
+      // Measured once, here, before anything is transformed. Reading the rect
+      // lazily inside the tween is circular — it includes the y this very tween
+      // is applying, so the travel solves to zero and the headings never move.
+      const headDocTop = headings.getBoundingClientRect().top + window.scrollY;
+      const scrollAtCue = start() + ((end() - start()) * HEAD_CUE) / TOTAL;
+      const headTravel = Math.max(0, window.innerHeight - (headDocTop - scrollAtCue));
+      tl.fromTo(
+        headings,
+        { y: headTravel },
+        { y: 0, duration: HEAD_RUN, ease: "none" },
+        HEAD_CUE,
+      );
+
+      /*
+       * (f) The cards, unchanged in geometry — only the cue moved.
+       *
+       * set + to, not fromTo. Inside a scrubbed timeline a staggered fromTo
+       * only holds the from-state for its first target; the others sat upright
+       * until their own slot opened and then snapped into the rotation, so two
+       * of the three visibly popped. `immediateRender` does not survive the
+       * scrub re-render. Setting the start state outright means they are folded
+       * from the moment the page lays out, and the `to` simply unfolds them.
+       */
+      gsap.set(cards, { transformOrigin: "50% 0%", rotateX: -70, opacity: 0 });
+      tl.to(
+        cards,
+        {
+          rotateX: 0,
+          opacity: 1,
+          duration: CARD_RUN,
+          ease: "none",
+          stagger: CARD_STAGGER,
+        },
+        CARD_CUE,
       );
     }, a);
 
     return () => ctx.revert();
   }, [reduced]);
-
   if (reduced) return null;
 
   return (

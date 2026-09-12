@@ -152,7 +152,7 @@ export function ChapterWipe() {
            * so a background left static drifts out of step and the hand-off
            * when the overlay hides shows up as a colour jump.
            */
-          onUpdate: () => {
+          onUpdate: (self) => {
             const kf = headings.closest("section") as HTMLElement;
             const top = kf.getBoundingClientRect().top;
             const h = kf.offsetHeight;
@@ -160,6 +160,15 @@ export function ChapterWipe() {
               band.style.backgroundSize = `100% ${h}px`;
               band.style.backgroundPosition = `0 ${top - band.offsetTop}px`;
             });
+            /*
+             * The overlay exists to cover the dark chapter while Key facts
+             * arrives. The moment that section reaches the top of the viewport
+             * it covers everything by itself and the overlay is redundant —
+             * worse than redundant, since it keeps painting a full screen of
+             * this chapter's gradient over whatever is actually there. Held to
+             * the end of the window it was covering 557px of the next section.
+             */
+            l.style.visibility = self.isActive && top > 0 ? "visible" : "hidden";
           },
         },
       });
@@ -201,7 +210,14 @@ export function ChapterWipe() {
        * covers the viewport on its own, so the snap back happens underneath a
        * fully opaque overlay and cannot be seen.
        */
-      tl.to(dark, { y: 0, duration: 0.4, ease: "none" }, fillEnd);
+      /*
+       * Snapped back, not eased. Key facts covers the viewport very shortly
+       * after the last band lands, and the overlay hides the instant it does —
+       * so a slow release was still mid-flight and the displaced dark chapter
+       * became visible over the section. It happens under a fully opaque
+       * overlay either way, so there is nothing to smooth.
+       */
+      tl.to(dark, { y: 0, duration: 0.03, ease: "none" }, fillEnd);
 
       bands.forEach((band, i) => {
         tl.fromTo(

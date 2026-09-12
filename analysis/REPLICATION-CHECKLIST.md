@@ -125,6 +125,15 @@ the camera side — face-on was a second dead angle, since a mirror pointing at 
 empty space behind them. Regression-test both with `/?markTime=`.
 
 Known deltas from the reference, accepted for now:
+* **The dark → Key facts band wipe is an INVENTION, not a reproduction.** Five bands fill with the
+  light chapter's colour, bottom-first, scrubbed to scroll (`components/home/ChapterWipe.tsx`). The
+  reference has no such effect: frames 076–079 look banded because the *recording tore* during fast
+  scrolling — frame 077 slices the marquee glyphs horizontally and replaces their lower halves with
+  flat grey mid-stroke, which no animation does. `FRAME-MAP.md` §07 and the capture-artifact list in
+  `CLAUDE.md` both already flagged those frames. The reference's real transition is A06, a hard edge
+  scrolling up. Owner asked for the banded look deliberately after being shown this. Do not "restore"
+  it to A06. The five-band geometry is at least grounded: the tear lines fall at 190/380/571/761 CSS
+  px against a 951px viewport, within a pixel of exact fifths.
 * **A08 is scrubbed to scroll, not timed.** The frames show a timed ~1.1 s entrance; we bind the
   rotation to scroll position so it rewinds visibly when scrolling back up. Owner's call. The
   silhouette geometry (rotateX, top-edge hinge, shared ~1335px perspective, stagger) is unchanged and

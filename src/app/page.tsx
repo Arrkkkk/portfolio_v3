@@ -1,3 +1,4 @@
+import { ChapterWipe } from "@/components/home/ChapterWipe";
 import { DarkChapters } from "@/components/home/DarkChapters";
 import { Hero } from "@/components/home/Hero";
 import { Statement } from "@/components/home/Statement";
@@ -19,6 +20,9 @@ export default function Home() {
         <Hero />
         <Statement />
         <MarqueeBand />
+        {/* dark -> light band wipe; must sit inside the wrapper so the sticky
+            canvas still shows through the bands that haven't filled yet. */}
+        <ChapterWipe />
       </DarkChapters>
       <KeyFacts />
       <SelectedWork />

@@ -46,6 +46,15 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 const BANDS = 5;
 
 /**
+ * The Key facts chapter's own background. The bands paint this, aligned to that
+ * section, rather than a flat colour: the overlay is what you see while the
+ * wipe runs and the section itself is what you see once it hides, so anything
+ * other than the same gradient in the same place shows up as a colour jump at
+ * the hand-off. Keep in step with the class on that section.
+ */
+const CHAPTER_BG = "linear-gradient(180deg,#dadada 0%,#fdfdfd 60%,#ffffff 100%)";
+
+/**
  * One band takes 1 unit to fill; the next starts when it is 30% full, so
  * consecutive bands sit a constant 30 points apart:
  *
@@ -124,6 +133,21 @@ export function ChapterWipe() {
           invalidateOnRefresh: true,
           onToggle: (self) => {
             l.style.visibility = self.isActive ? "visible" : "hidden";
+          },
+          /*
+           * Slide each band's copy of the chapter gradient to wherever that
+           * section actually is. The overlay is fixed and the section scrolls,
+           * so a background left static drifts out of step and the hand-off
+           * when the overlay hides shows up as a colour jump.
+           */
+          onUpdate: () => {
+            const kf = headings.closest("section") as HTMLElement;
+            const top = kf.getBoundingClientRect().top;
+            const h = kf.offsetHeight;
+            bands.forEach((band) => {
+              band.style.backgroundSize = `100% ${h}px`;
+              band.style.backgroundPosition = `0 ${top - band.offsetTop}px`;
+            });
           },
         },
       });
@@ -274,10 +298,16 @@ export function ChapterWipe() {
               // between two already-filled bands; same flat colour, so the
               // overlap is invisible where the seam was not.
               height: `calc(${100 / BANDS}% + 1px)`,
-              // The first stop of the Key facts gradient. The wipe completes
-              // exactly as that section finishes covering the screen, so
-              // matching its top colour is what makes the handoff invisible.
-              background: "#dadada",
+              /*
+               * The section's own gradient, realigned to it every frame above,
+               * over its first stop. The flat colour alone was visibly lighter
+               * than the section once the overlay hid. The solid sits behind so
+               * the area above the section's top -- where the gradient does not
+               * reach -- still reads as the chapter's arriving colour.
+               */
+              backgroundColor: "#dadada",
+              backgroundImage: CHAPTER_BG,
+              backgroundRepeat: "no-repeat",
             }}
           />
         ))}

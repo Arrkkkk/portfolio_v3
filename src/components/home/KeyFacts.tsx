@@ -31,11 +31,12 @@ import { stats, tools, toolsLabel } from "@/data/stats";
  */
 export function KeyFacts() {
   const root = useRef<HTMLDivElement>(null);
+  const grid = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
     const el = root.current;
-    if (!el || reduced) return;
+    if (!el || !grid.current || reduced) return;
     gsap.registerPlugin(ScrollTrigger);
     const ctx = gsap.context(() => {
       const cards = gsap.utils.toArray<HTMLElement>(".kf-card");
@@ -43,12 +44,25 @@ export function KeyFacts() {
         cards.forEach((c) => (c.style.willChange = on ? "transform" : ""));
 
       /*
-       * fromTo, not from, and no `once`. `once: true` killed the trigger after
-       * the first fire, so the entrance could only be seen by reloading the
-       * page. Both endpoints are written out explicitly because the tween now
-       * has to be re-runnable in both directions — `from` infers its end state
-       * from whatever the element happens to be at when it first renders,
-       * which is not something to depend on once a tween replays.
+       * Scrubbed, not timed. A timed tween reversed at a single trigger point,
+       * and that point put the cards ~1050px down a 951px viewport — so the
+       * rewind was real but never visible. Bound to scroll position instead,
+       * the rotation tracks the scrollbar in both directions: down unfolds the
+       * cards, up folds them back, at whatever pace you scroll.
+       *
+       * This is a deliberate deviation from the measured A08, which is a timed
+       * ~1.1s entrance. Under a scrub the duration is governed by the scroll
+       * range rather than by time, so the 1.1s no longer applies; the stagger
+       * survives as a proportion of that range, which is what keeps the
+       * left→right cascade. Nothing in the frames covers scrolling back up —
+       * the recording is a single downward pass — so there is no reference
+       * behaviour being contradicted here. Logged in REPLICATION-CHECKLIST.md.
+       *
+       * `ease: "none"` because the tween is now driven by scroll: any easing
+       * would decouple the cards from the scrollbar and undo the point of it.
+       *
+       * fromTo, not from: both endpoints have to be explicit for a tween that
+       * is scrubbed through in both directions.
        */
       gsap.fromTo(
         cards,
@@ -70,23 +84,26 @@ export function KeyFacts() {
           rotateX: 0,
           opacity: 1,
           duration: 1.1,
-          ease: "expo.out",
-          // 0.145, not the 0.08 originally inferred. In frame 082 the three
-          // cards sit at ~95% / ~77% / 59% of final height — a 36-point
-          // spread. Measured: 0.08 gave 16 points, 0.17 gave 59.
+          ease: "none",
+          // Kept from the frame measurements: in frame 082 the three cards sit
+          // at ~95% / ~77% / 59% of final height. Scrubbed, this reads as a
+          // spatial cascade rather than a temporal one, but the offset between
+          // cards is the same proportion of the run.
           stagger: 0.145,
-          // Softens edges mid-rotation in some browsers; dropped whenever the
-          // tween comes to rest, in either direction, so it never pins a layer
-          // for the life of the page.
-          onStart: () => hint(true),
-          onComplete: () => hint(false),
-          onReverseComplete: () => hint(false),
           scrollTrigger: {
-            trigger: el,
-            start: "top 75%",
-            // Replays every time the section is scrolled into, and rewinds
-            // when it leaves upward so the next approach starts from flat.
-            toggleActions: "restart none none reverse",
+            // The grid, not the section: the range has to be anchored to where
+            // the cards actually are, or it maps to scroll positions at which
+            // they are off-screen — which is exactly what went wrong before.
+            trigger: grid.current!,
+            start: "top 92%",
+            end: "top 38%",
+            // A little smoothing so the cards glide rather than snap to every
+            // wheel tick; still fully scroll-bound in both directions.
+            scrub: 0.6,
+            // Hint only while the rotation is live. On a scrub, tween
+            // onStart/onComplete fire repeatedly as you scrub across the
+            // endpoints, so the trigger's own active state is the right signal.
+            onToggle: (self) => hint(self.isActive),
           },
         },
       );
@@ -113,6 +130,7 @@ export function KeyFacts() {
           measured −19.7% taper then implies perspective ≈ 1335px.
         */}
         <div
+          ref={grid}
           className="mx-auto mt-[92px] grid max-w-[var(--container-mid)] gap-5 sm:grid-cols-2 lg:grid-cols-3"
           style={{ perspective: "1335px" }}
         >

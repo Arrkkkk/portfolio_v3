@@ -125,6 +125,11 @@ the camera side — face-on was a second dead angle, since a mirror pointing at 
 empty space behind them. Regression-test both with `/?markTime=`.
 
 Known deltas from the reference, accepted for now:
+* **A08 is scrubbed to scroll, not timed.** The frames show a timed ~1.1 s entrance; we bind the
+  rotation to scroll position so it rewinds visibly when scrolling back up. Owner's call. The
+  silhouette geometry (rotateX, top-edge hinge, shared ~1335px perspective, stagger) is unchanged and
+  still matches the frames; only the driver differs. Scroll-up behaviour is NOT OBSERVABLE in the
+  recording, which is a single downward pass.
 * **The home marquee is `--text-hi` (#F2F2F2), not the measured 30% white**, and reads
   `EXPLORE + BUILD + EVOLVE` rather than the reference's three words. Owner's call.
   `PAGES.md` §03 keeps the measured value.

@@ -106,12 +106,16 @@ asymmetry is a **shared** vanishing point at the grid's centre pulling the outer
 `rotateY`; per-card perspective would taper each card symmetrically.
 
 **Final** neutral.
-**Duration** ~1.1 s; **stagger** ~0.145 s left→right — frame 082 catches the three cards at ~95% /
-~77% / 59% of final height, a 36-point spread that 0.08 s cannot produce (it measures 16).
-**Replay** `toggleActions: "restart none none reverse"` — it runs every time the section is scrolled
-into, not once per page load. The recording is a single pass so this is **NOT OBSERVABLE** from the
-frames; it is a deliberate choice. The rewind is invisible in practice: at the `top 75%` trigger the
-cards sit ~1240px down a 951px viewport, well below the fold.
+**Stagger** ~0.145 left→right — frame 082 catches the three cards at ~95% / ~77% / 59% of final
+height, a 36-point spread that 0.08 cannot produce (it measures 16).
+**Scrub** `scrub: 0.6` over the card grid, `start: "top 92%"` → `end: "top 38%"`, `ease: "none"`.
+**We build this scrubbed rather than timed** — owner's call, so the rotation tracks the scrollbar in
+both directions and the rewind is visible on the way back up. The measured ~1.1 s duration therefore
+no longer applies: under a scrub the run is governed by the scroll range, and the stagger survives as
+a proportion of it. **NOT OBSERVABLE** either way — the recording is a single downward pass, so the
+frames say nothing about scrolling back up. The range is anchored to the grid, not the section: at
+the old section-based `top 75%` the cards sat ~1050px down a 951px viewport, so the rewind was real
+but never on screen. Verified visible across the whole range (card top y=875 → 361).
 **Extra** the section title `Key facts` itself resolves out of a per-glyph blur (frame 079:
 `K   f cts`). Same technique as A02.
 

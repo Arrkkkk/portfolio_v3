@@ -59,7 +59,7 @@ const BANDS = 5;
  * The window's start is cued to the marquee sitting centred, so the extra goes
  * on the end.
  */
-const STRETCH = 1.2;
+const STRETCH = 1.3;
 
 const CHAPTER_BG = "linear-gradient(180deg,#dadada 0%,#fdfdfd 60%,#ffffff 100%)";
 

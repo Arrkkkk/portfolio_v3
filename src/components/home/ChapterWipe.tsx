@@ -169,7 +169,39 @@ export function ChapterWipe() {
        * authoritative whatever the playhead is doing and immune to the scrub
        * value.
        */
+      /*
+       * Hold the marquee still while the bands fill over it — as a function of
+       * scroll, deliberately NOT as a beat in the scrubbed timeline.
+       *
+       * It is counter-translated by exactly the scroll travelled, so it reads
+       * as pinned without being pinned. ScrollTrigger's `pin` was the obvious
+       * tool and the wrong one: with pinSpacing it inserts a spacer and pushes
+       * Key facts down, which is the added scroll distance that was wrong the
+       * first time round; without pinSpacing it drops the element out of flow
+       * and everything below jumps up by its height. A transform changes no
+       * layout at all.
+       *
+       * Why it cannot live on the timeline: `scrub` eases the playhead toward
+       * the scroll position, so a held-then-released tween lags. On a fast
+       * flick that left the chapter displaced hundreds of pixels at a scroll
+       * where Key facts already owned the screen — measured at 763px with the
+       * top bands only 60% filled, so 95px of marquee showed through the gap
+       * the unfilled bands left. Keeping the overlay visible could not fix
+       * that, because visible is not the same as opaque. Driven from scroll
+       * there is no playhead and no lag: the displacement is the scroll
+       * travelled, exactly, on every frame.
+       *
+       * Released the moment Key facts covers the viewport, which is the moment
+       * the dark chapter stops being able to matter — not at a timeline beat
+       * that can drift away from it.
+       */
+      const syncDark = () => {
+        const held = Math.max(0, Math.min(window.scrollY, kfDocTop()) - start());
+        gsap.set(dark, { y: window.scrollY >= kfDocTop() ? 0 : held });
+      };
+
       const syncOverlay = (active: boolean) => {
+        syncDark();
         const parked = Math.abs((gsap.getProperty(dark, "y") as number) ?? 0) < 1;
         const covered = window.scrollY >= kfDocTop();
         /*
@@ -222,52 +254,6 @@ export function ChapterWipe() {
           },
         },
       });
-
-      /*
-       * Hold the marquee still while the bands fill over it.
-       *
-       * It is counter-translated by exactly the scroll travelled, so it reads
-       * as pinned without actually being pinned. ScrollTrigger's `pin` was the
-       * obvious tool and the wrong one here: with pinSpacing it inserts a
-       * spacer and pushes Key facts down, which is the added scroll distance
-       * that was wrong the first time round; without pinSpacing it drops the
-       * element out of flow and everything below jumps up by its height. A
-       * transform changes no layout at all and unwinds on the way back up.
-       *
-       * It only has to hold while the fill is visible. Once the last band lands
-       * the overlay covers the viewport, so whatever the marquee does
-       * underneath after that cannot be seen.
-       */
-      const fillEnd = BAND_STEP * (BANDS - 1) + BAND_FILL; // 2.2
-      tl.to(
-        dark,
-        {
-          y: () => ((end() - start()) * fillEnd) / TOTAL,
-          duration: fillEnd,
-          ease: "none",
-        },
-        0,
-      );
-
-      /*
-       * ...and put it back. The hold has to be undone or the dark chapter stays
-       * displaced by the full fill distance for the rest of the page: the
-       * overlay hides when the trigger deactivates and exposes it, which is
-       * exactly what happened — Key facts drawn over a marquee sitting 667px
-       * out of position.
-       *
-       * It unwinds between the last band landing and the point where Key facts
-       * covers the viewport on its own, so the snap back happens underneath a
-       * fully opaque overlay and cannot be seen.
-       */
-      /*
-       * Snapped back, not eased. Key facts covers the viewport very shortly
-       * after the last band lands, and the overlay hides the instant it does —
-       * so a slow release was still mid-flight and the displaced dark chapter
-       * became visible over the section. It happens under a fully opaque
-       * overlay either way, so there is nothing to smooth.
-       */
-      tl.to(dark, { y: 0, duration: 0.03, ease: "none" }, fillEnd);
 
       bands.forEach((band, i) => {
         tl.fromTo(

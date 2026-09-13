@@ -122,13 +122,30 @@ export function ChapterWipe() {
         const kf = headings.closest("section") as HTMLElement;
         return kf.getBoundingClientRect().top + window.scrollY - window.innerHeight;
       };
+      /*
+       * Document position from the layout box, never from getBoundingClientRect.
+       * offsetTop/offsetParent are layout values and ignore transforms; a rect
+       * read does not. The card grid now sits inside the element this timeline
+       * translates, so a rect read of it is circular — it includes the offset
+       * the timeline is applying, which inflated the window and dragged every
+       * cue off its measured position.
+       */
+      const docTop = (el: HTMLElement) => {
+        let y = 0;
+        let n: HTMLElement | null = el;
+        while (n) {
+          y += n.offsetTop;
+          n = n.offsetParent as HTMLElement | null;
+        }
+        return y;
+      };
+
       const end = () => {
         const g = cards[0].parentElement as HTMLElement;
         // Where the cards have had their own scroll to finish in, with the grid
         // still on screen: finishing the rotation above the fold is the bug
         // that made the old rewind invisible.
-        const natural =
-          g.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.15;
+        const natural = docTop(g) - window.innerHeight * 0.15;
         return start() + (natural - start()) * STRETCH;
       };
 
@@ -270,15 +287,31 @@ export function ChapterWipe() {
        * (e) The headings rise from below the fold. Their natural position at the
        * cue is measured off the live layout rather than assumed, so the travel
        * is exactly "from the bottom edge of the screen" whatever the viewport is.
+       *
+       * The transform goes on the whole content block, not on the headings
+       * alone. Moving only the headings pushed them ~390px below their layout
+       * position while the cards stayed at theirs, so for most of the entrance
+       * the cards sat *above* the heading — measured at t=1.9, when the tilt
+       * begins, the grid's top was 196px above the heading's bottom. The
+       * section's own spacing is already right (92px heading to grid, 116px
+       * grid to tools); translating the container keeps that true at every
+       * instant instead of only at rest.
+       *
+       * Deliberately not a second matching tween on the cards: that re-derives
+       * a relationship the layout already expresses, and two tweens can drift
+       * out of step — the same shape of bug as the scrub flash.
        */
-      // Measured once, here, before anything is transformed. Reading the rect
-      // lazily inside the tween is circular — it includes the y this very tween
-      // is applying, so the travel solves to zero and the headings never move.
-      const headDocTop = headings.getBoundingClientRect().top + window.scrollY;
+      // Same reason as `end()`: the headings sit inside the element this tween
+      // translates, so a rect read would include the y it is applying and the
+      // travel would solve to zero.
+      const headDocTop = docTop(headings);
       const scrollAtCue = start() + ((end() - start()) * HEAD_CUE) / TOTAL;
       const headTravel = Math.max(0, window.innerHeight - (headDocTop - scrollAtCue));
+      // Still measured from the headings, so the cue is unchanged: they are what
+      // has to arrive at the bottom edge of the screen.
+      const content = headings.parentElement as HTMLElement;
       tl.fromTo(
-        headings,
+        content,
         { y: headTravel },
         { y: 0, duration: HEAD_RUN, ease: "none" },
         HEAD_CUE,

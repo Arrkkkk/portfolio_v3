@@ -146,7 +146,53 @@ export function ChapterWipe() {
         (headings.closest("section") as HTMLElement).getBoundingClientRect().top +
         window.scrollY;
 
+      /*
+       * The single authority on whether the overlay is on screen.
+       *
+       * The overlay exists to cover the dark chapter while Key facts arrives,
+       * so the only safe rule is: it may let go once the thing it is covering
+       * is actually back in place. Not when a *proxy* for that says so.
+       *
+       * Scroll position alone was that proxy, and it is a different clock from
+       * the one the release runs on. The hold is released inside a scrubbed
+       * timeline, and `scrub` eases the playhead toward the scroll position
+       * rather than snapping to it — so on a fast flick scrollY leaps past the
+       * threshold while the playhead is still hundreds of milliseconds behind.
+       * Measured mid-flick: scrollY 2863 (120px past the threshold), overlay
+       * already hidden, dark chapter still translated 766px and covering 646px
+       * of a 951px viewport. That is the split-second flash of the marquee.
+       *
+       * Widening the gap between the two cannot fix it: in timeline terms they
+       * sit ~5px of scroll apart, but scrub lag is measured in time, not
+       * pixels, and under a flick it is worth far more than any margin. So the
+       * condition reads the dark chapter's *actual* transform instead, which is
+       * authoritative whatever the playhead is doing and immune to the scrub
+       * value.
+       */
+      const syncOverlay = (active: boolean) => {
+        const parked = Math.abs((gsap.getProperty(dark, "y") as number) ?? 0) < 1;
+        const covered = window.scrollY >= kfDocTop();
+        /*
+         * A displaced dark chapter must be covered whatever else is true —
+         * `active` is not a gate on that. Flicking clean past the end of the
+         * window deactivates the trigger while the scrub is still catching up,
+         * and gating on `active` hid the overlay with the marquee still 897px
+         * out of place: the same flash, reached by the other door.
+         */
+        l.style.visibility =
+          !parked || (active && !covered) ? "visible" : "hidden";
+      };
+
       const tl = gsap.timeline({
+        /*
+         * Visibility is decided here, on the timeline's own render, not on the
+         * ScrollTrigger's onUpdate. ScrollTrigger only updates on scroll
+         * events; the timeline also renders while the scrub is *catching up*
+         * after the scrolling stops, and those catch-up frames are exactly
+         * where the flash lives. This also covers leaving the range fast,
+         * which used to hide the overlay unconditionally via onToggle.
+         */
+        onUpdate: () => syncOverlay(tl.scrollTrigger?.isActive ?? false),
         scrollTrigger: {
           trigger: a,
           // Raw scroll positions. Expressed as a "top Xpx" string this was
@@ -157,9 +203,7 @@ export function ChapterWipe() {
           end,
           scrub: 0.4,
           invalidateOnRefresh: true,
-          onToggle: (self) => {
-            l.style.visibility = self.isActive ? "visible" : "hidden";
-          },
+          onToggle: (self) => syncOverlay(self.isActive),
           /*
            * Slide each band's copy of the chapter gradient to wherever that
            * section actually is. The overlay is fixed and the section scrolls,
@@ -174,17 +218,7 @@ export function ChapterWipe() {
               band.style.backgroundSize = `100% ${h}px`;
               band.style.backgroundPosition = `0 ${top - band.offsetTop}px`;
             });
-            /*
-             * The overlay exists to cover the dark chapter while Key facts
-             * arrives. The moment that section's top reaches the top of the
-             * viewport it covers everything by itself and the overlay is
-             * redundant — worse than redundant, since it keeps painting a full
-             * screen of this chapter's gradient over whatever is actually
-             * there. Compared against window.scrollY rather than a fresh rect
-             * read: same condition, no live layout dependency.
-             */
-            l.style.visibility =
-              self.isActive && window.scrollY < kfDocTop() ? "visible" : "hidden";
+            syncOverlay(self.isActive);
           },
         },
       });

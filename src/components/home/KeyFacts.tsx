@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { ChapterSection } from "@/components/chrome/ChapterTheme";
 import { BlurText } from "@/components/primitives/BlurText";
+import { LOCK_PX } from "@/components/home/ChapterWipe";
 import { stats, tools, toolsLabel } from "@/data/stats";
 
 /**
@@ -44,6 +45,16 @@ export function KeyFacts() {
       theme="light"
       className="bg-[linear-gradient(180deg,#dadada_0%,#fdfdfd_60%,#ffffff_100%)] text-ink"
     >
+      {/*
+        The height the lock spends. ChapterWipe holds this section still while
+        the three cards rotate, and holding content still while someone scrolls
+        is the same thing as consuming scroll — so the scroll has to exist. It
+        is cancelled by a matching −LOCK_PX on the block's transform until the
+        hold spends it, which is what makes the release land exactly on the
+        layout position instead of jumping to it.
+      */}
+      <div aria-hidden style={{ height: LOCK_PX }} />
+
       {/*
         z-30 on the content, not on the section. Everything inside rides above
         the wipe overlay (z-20) so it scrolls in continuously, while the

@@ -85,6 +85,35 @@ const CARD_RUN = 1.5;
 const CARD_STAGGER = 0.198; // same stagger:duration ratio as the tuned 0.145/1.1
 const TOTAL = CARD_CUE + CARD_RUN + CARD_STAGGER * 2;
 
+/**
+ * The lock: Key facts rises to its cue, holds still while all three cards
+ * rotate, then resumes scrolling.
+ *
+ * Without it the heading cannot survive its own sequence. The run is 424px of
+ * scroll per timeline unit and the card rotation alone spans 1.896 units —
+ * 805px — but the heading has only 553px of screen left when the cards start.
+ * Measured: it is gone by the time the *first* card finishes, and 540px above
+ * the fold by the time the third does. No tuning fixes that; the numbers do
+ * not fit.
+ *
+ * Holding content still while someone scrolls is the same thing as consuming
+ * scroll, so the section carries `LOCK_PX` of extra height (a spacer rendered
+ * by KeyFacts) that the hold spends. That is what makes the release exact
+ * rather than a jump: the transform that pins the block is exactly cancelled
+ * by the height it consumed, so at the end of the lock the block is already
+ * where the layout would have put it.
+ */
+export const LOCK_PX = 820;
+/**
+ * Viewport y the content block holds at; the heading sits 120px below it, so
+ * it locks around 280. Higher than this and the lock engages too late — it is
+ * also what sets *when* the hold starts, since the hold begins when the block
+ * reaches this line. Lower and the card row runs off the bottom: heading 280 +
+ * 131 tall + 92 gap puts the grid at 503, and its 407px height ends at 910,
+ * just inside a 951 viewport.
+ */
+const LOCK_Y = 160;
+
 export function ChapterWipe() {
   const anchor = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -145,7 +174,10 @@ export function ChapterWipe() {
         // Where the cards have had their own scroll to finish in, with the grid
         // still on screen: finishing the rotation above the fold is the bug
         // that made the old rewind invisible.
-        const natural = docTop(g) - window.innerHeight * 0.15;
+        // Minus LOCK_PX: the spacer that funds the lock sits above this grid,
+        // so its layout position is that much lower. Counting it would inflate
+        // the window and stretch every cue apart from the pacing that was set.
+        const natural = docTop(g) - LOCK_PX - window.innerHeight * 0.15;
         return start() + (natural - start()) * STRETCH;
       };
 
@@ -212,6 +244,13 @@ export function ChapterWipe() {
        * the dark chapter stops being able to matter — not at a timeline beat
        * that can drift away from it.
        */
+      /*
+       * Assigned further down, once the rise geometry has been measured, but
+       * declared here so the same scroll-driven sync that holds the marquee
+       * also positions the Key facts block. One driver, one clock.
+       */
+      let syncContent: () => void = () => {};
+
       const syncDark = () => {
         const held = Math.max(0, Math.min(window.scrollY, kfDocTop()) - start());
         gsap.set(dark, { y: window.scrollY >= kfDocTop() ? 0 : held });
@@ -219,6 +258,7 @@ export function ChapterWipe() {
 
       const syncOverlay = (active: boolean) => {
         syncDark();
+        syncContent();
         const parked = Math.abs((gsap.getProperty(dark, "y") as number) ?? 0) < 1;
         const covered = window.scrollY >= kfDocTop();
         /*
@@ -304,18 +344,40 @@ export function ChapterWipe() {
       // Same reason as `end()`: the headings sit inside the element this tween
       // translates, so a rect read would include the y it is applying and the
       // travel would solve to zero.
-      const headDocTop = docTop(headings);
+      // Minus LOCK_PX for the same reason as `end()`: the spacer sits above
+      // this block, so its layout position includes height the lock will spend.
+      const headDocTop = docTop(headings) - LOCK_PX;
       const scrollAtCue = start() + ((end() - start()) * HEAD_CUE) / TOTAL;
       const headTravel = Math.max(0, window.innerHeight - (headDocTop - scrollAtCue));
-      // Still measured from the headings, so the cue is unchanged: they are what
-      // has to arrive at the bottom edge of the screen.
+      const riseEndScroll =
+        start() + ((end() - start()) * (HEAD_CUE + HEAD_RUN)) / TOTAL;
       const content = headings.parentElement as HTMLElement;
-      tl.fromTo(
-        content,
-        { y: headTravel },
-        { y: 0, duration: HEAD_RUN, ease: "none" },
-        HEAD_CUE,
-      );
+
+      /*
+       * Rise and lock are one transform, driven from scroll rather than from
+       * the timeline — the same reasoning as the marquee hold. A lock has to
+       * cancel scroll exactly, and a scrubbed playhead lags it by design, so a
+       * held-then-released tween drifts out of step with the position that
+       * decides where it should be.
+       *
+       *   before the cue   y = rise − LOCK_PX   (the −LOCK_PX cancels the
+       *                                          spacer, so the block sits
+       *                                          where it would without it)
+       *   through the lock the offset climbs to 0 at exactly the rate scroll
+       *                    advances, so the block stands still
+       *   after            y = 0, and the block is already where the layout
+       *                    puts it — the release is exact, not a jump
+       */
+      syncContent = () => {
+        const s = window.scrollY;
+        const rise =
+          headTravel *
+          (1 - gsap.utils.clamp(0, 1, (s - scrollAtCue) / (riseEndScroll - scrollAtCue)));
+        const lockStart = kfDocTop() - LOCK_Y;
+        const spent = gsap.utils.clamp(0, LOCK_PX, s - lockStart);
+        gsap.set(content, { y: rise - LOCK_PX + spent });
+      };
+      syncContent();
 
       /*
        * The blur resolve is one beat of this sequence, not a reaction to the

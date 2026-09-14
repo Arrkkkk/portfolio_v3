@@ -42,6 +42,14 @@ export const stats: Stat[] = [
   },
 ];
 
+/**
+ * The note under the "Key facts" heading. PAGES §04 measures the reference's
+ * as two lines inside a ~240px measure; this copy fits on one at exactly that
+ * measure, so the block is a line shorter than the frame. Owner's copy — the
+ * geometry around it is unchanged.
+ */
+export const statsNote = "Some numbers. A lot of building.";
+
 /** Tools row (the reference's "OUR BUSINESS PARTNERS"). */
 export const tools = ["Next.js", "TypeScript", "Three.js", "GSAP", "Figma"];
 export const toolsLabel = "TOOLS I BUILD WITH";

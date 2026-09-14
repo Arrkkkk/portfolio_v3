@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { ChapterSection } from "@/components/chrome/ChapterTheme";
 import { BlurText } from "@/components/primitives/BlurText";
 import { LOCK_PX } from "@/components/home/ChapterWipe";
-import { stats, tools, toolsLabel } from "@/data/stats";
+import { stats, statsNote, tools, toolsLabel } from "@/data/stats";
 
 /**
  * PAGES §04 / A08 — three 330 × 407 cards in a centred 1032px container with
@@ -81,7 +81,7 @@ export function KeyFacts() {
             className="text-display track-display font-medium"
           />
           <p className="mx-auto mt-5 max-w-[240px] text-[14px] leading-[1.3] text-ink-mid">
-            A snapshot of my experience and impact.
+            {statsNote}
           </p>
         </div>
 

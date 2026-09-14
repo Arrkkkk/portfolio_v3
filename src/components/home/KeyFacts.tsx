@@ -169,11 +169,29 @@ export function KeyFacts() {
         */}
         <div className="kf-tools mt-[116px] text-center">
           <BlurText manual as="p" text={toolsLabel} className="label-mono text-ink-mid" />
-          <ul className="kf-tools-list mx-auto mt-8 flex max-w-[690px] flex-wrap items-center justify-center">
+          {/*
+            The 32px item padding is the reference's spacing and only holds
+            where there is room for it. Measured: the five names are 289px of
+            text, so at `px-8` the row needs 609px and the available width is
+            the viewport less the 32px page padding — it ran out at 640px and
+            wrapped "Figma" onto a line of its own.
+
+            The wrap also exposed the divider: a `border-l` on every item but
+            the first means whichever item starts a wrapped row keeps its
+            border, so the second line opened with a hairline attached to
+            nothing. Hence `sm:border-l` — below the breakpoint the rule is
+            dropped entirely and `gap` carries the separation, which cannot
+            orphan. Above it the padding steps down before the row runs out of
+            room, so it stays on one line and the dividers always sit between
+            two names.
+          */}
+          <ul className="kf-tools-list mx-auto mt-8 flex max-w-[690px] flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:gap-x-0">
             {tools.map((t, i) => (
               <li
                 key={t}
-                className={`px-8 text-[18px] leading-none ${i > 0 ? "border-l border-black/12" : ""}`}
+                className={`px-0 text-[18px] leading-none sm:px-6 lg:px-8 ${
+                  i > 0 ? "border-black/12 sm:border-l" : ""
+                }`}
               >
                 {t}
               </li>

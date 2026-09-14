@@ -31,11 +31,26 @@ const neueMontreal = localFont({
   display: "swap",
 });
 
+/*
+ * `fallback` is load-bearing, not tidiness. next/font synthesises a
+ * "JetBrains Mono Fallback" face with size-adjust metrics for CLS and inserts
+ * it directly after the real one — and by default it is built from `local("Arial")`.
+ * Arial has U+2192, JetBrains Mono's `latin` subset does not (that range stops
+ * at U+2191/U+2193), so Chrome resolved every right-arrow on the site to Arial
+ * and never reached the monospace families further down the stack: a
+ * proportional sans glyph inside monospace uppercase, on MonoLink's
+ * "VIEW ALL PROJECTS →" as much as on the Key facts labels.
+ *
+ * Naming monospace families here makes the synthesised fallback derive from
+ * one of them instead, so the substitute glyph is at least monospace. Verified
+ * with CSS.getPlatformFontsForNode rather than by eye.
+ */
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-jetbrains-mono",
   display: "swap",
+  fallback: ["Menlo", "Consolas", "DejaVu Sans Mono", "monospace"],
 });
 
 export const metadata: Metadata = {

@@ -66,7 +66,20 @@ export function KeyFacts() {
       */}
       <div ref={root} className="relative z-30 page-x py-[120px]">
         <div className="kf-headings text-center">
-          <BlurText manual as="h2" text="Key facts" className="text-display track-display" />
+          {/*
+            font-medium (500) is a deliberate deviation from "weight 400
+            display only" — the owner's call, logged in CLAUDE.md alongside
+            the marquee's. It is a real cut, not a synthesized one: both
+            weights are self-hosted and `font-synthesis-weight: none` is set
+            globally, so an unloaded weight would silently fall back to 400
+            rather than fake it.
+          */}
+          <BlurText
+            manual
+            as="h2"
+            text="Key facts"
+            className="text-display track-display font-medium"
+          />
           <p className="mx-auto mt-5 max-w-[240px] text-[14px] leading-[1.3] text-ink-mid">
             A snapshot of my experience and impact.
           </p>

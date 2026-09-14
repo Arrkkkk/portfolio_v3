@@ -31,7 +31,38 @@ import { projects } from "@/data/projects";
  * `730 + track` wide and runs until its own right edge gets there:
  * `730 + track − vw`. 730 is exactly the title column (698) plus the page
  * padding (32), so the section pins for the same distance it always did.
+ *
+ * Each card also RISES as it crosses, and that is a second thing this section's
+ * spec missed — A09 described the X translation and nothing else. Frames
+ * 101–117, during which MyWorker's top is constant (so the page really is
+ * pinned and this is the cards' own movement, not scroll): each card enters low
+ * on the right and climbs to the common baseline as it travels left. Offset
+ * from each card's own settled top, pooling Pulse Studio and Loftloom —
+ *
+ *   card left  1544  1470  1276  1218  1149   951   853   629
+ *   rise left   373   273   151   130    68    28    13     0
+ *
+ * Two cards of quite different content land on the same curve (at left ≈ 1210
+ * Pulse reads 130 and Loftloom 129; at ≈ 950, 28 and 22), so it is one rule
+ * applied per card. The whole card block moves, not just the artwork — the
+ * title and description travel with it, checked against frames 103–107.
  */
+
+/**
+ * The rise, as a function of the card's own left edge in the viewport — NOT of
+ * the timeline's progress. That distinction is the whole design: each card
+ * animates off where it happens to be, so the behaviour is identical whatever
+ * the project count, and adding a fourth card needs no re-tuning.
+ *
+ *   u = clamp((vw − left) / (SPAN · vw), 0, 1)
+ *   y = RISE · (1 − u)^POWER
+ *
+ * Fitted to the table above; residuals are within ~20px at every measured
+ * point, which is about the noise floor of reading a card edge off a JPEG.
+ */
+const RISE = 570;
+const RISE_SPAN = 0.62;
+const RISE_POWER = 2.5;
 export function SelectedWork() {
   const section = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLDivElement>(null);
@@ -54,9 +85,51 @@ export function SelectedWork() {
        * hand; this one cannot drift out of step with the layout.
        */
       const distance = () => Math.max(0, rw.scrollWidth - window.innerWidth);
+
+      const cards = Array.from(rw.querySelectorAll<HTMLElement>(".sw-card"));
+      const setY = cards.map((c) => gsap.quickSetter(c, "y", "px"));
+      /*
+       * Each card's left edge with the row untranslated, measured once and on
+       * refresh rather than every frame. A getBoundingClientRect per card per
+       * frame is exactly the layout thrash in a scroll handler that CLAUDE.md
+       * rules out, and it is not needed: the row's x is already known, so the
+       * live position is this constant plus that.
+       *
+       * The current x is subtracted rather than assumed to be zero, because a
+       * refresh can land mid-sequence with the row already displaced.
+       */
+      const baseLeft: number[] = [];
+      const measure = () => {
+        const x = (gsap.getProperty(rw, "x") as number) || 0;
+        cards.forEach((c, i) => {
+          baseLeft[i] = c.getBoundingClientRect().left - x;
+        });
+      };
+
+      const applyRise = () => {
+        const x = (gsap.getProperty(rw, "x") as number) || 0;
+        const vw = window.innerWidth;
+        const span = RISE_SPAN * vw;
+        for (let i = 0; i < cards.length; i++) {
+          const u = gsap.utils.clamp(0, 1, (vw - (baseLeft[i] + x)) / span);
+          setY[i](RISE * Math.pow(1 - u, RISE_POWER));
+        }
+      };
+
+      measure();
+      applyRise();
+
       gsap.to(rw, {
         x: () => -distance(),
         ease: "none",
+        /*
+         * On the tween, not on the ScrollTrigger. ScrollTrigger only updates on
+         * scroll events; the tween also renders while a scrub is catching up
+         * after the scrolling stops, and a rise driven only by scroll events
+         * would sit frozen out of step with the x it is supposed to track for
+         * those frames. Same reasoning as the band overlay in ChapterWipe.
+         */
+        onUpdate: applyRise,
         scrollTrigger: {
           trigger: sec,
           start: "top top",
@@ -64,6 +137,10 @@ export function SelectedWork() {
           pin: true,
           scrub: true,
           invalidateOnRefresh: true,
+          onRefresh: () => {
+            measure();
+            applyRise();
+          },
         },
       });
     }, sec);
@@ -120,7 +197,7 @@ export function SelectedWork() {
           <div className="lg:flex lg:h-full lg:items-start lg:pt-[187px]">
             <div className="flex flex-col gap-16 lg:w-max lg:flex-none lg:flex-row lg:gap-[60px] lg:pl-[66px]">
               {projects.map((p) => (
-                <article key={p.slug} className="lg:w-[714px] lg:shrink-0">
+                <article key={p.slug} className="sw-card lg:w-[714px] lg:shrink-0">
                   <Link href={`/work/${p.slug}`} className="group block">
                     <div
                       className="relative aspect-[714/488] w-full overflow-hidden rounded-img"

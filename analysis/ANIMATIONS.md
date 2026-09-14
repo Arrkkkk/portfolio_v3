@@ -132,6 +132,30 @@ wrong, and frames 098–102 show the heading sliding out of frame.
 **Cost** none: the cards used to travel `track − (vw − 730)` and the row travels `730 + track − vw`,
 the same number, because 730 is the title column (698) plus the page padding (32).
 **Easing** linear (scrub); Lenis supplies the inertia.
+
+**Card rise (a second thing this entry used to miss).** Each card does not only travel left — it
+enters low on the right and climbs to the common baseline as it crosses. Driven by the card's **own
+left edge in the viewport**, not by timeline progress, so it is per-card and independent of how many
+projects there are. The whole card block moves; the title and description travel with the artwork
+(frames 103–107).
+
+```
+u = clamp((vw − cardLeft) / (0.62 · vw), 0, 1)
+y = 570 · (1 − u)^2.5
+```
+
+**Evidence** frames 101–117, during which MyWorker's top is constant — so the page really is pinned
+and this is the cards' own movement, not scroll. Offset from each card's settled top:
+
+| card left | 1544 | 1470 | 1276 | 1218 | 1149 | 951 | 853 | 629 |
+|---|---|---|---|---|---|---|---|---|
+| rise left | 373 | 273 | 151 | 130 | 68 | 28 | 13 | 0 |
+
+Pulse Studio and Loftloom — quite different artwork — land on the same curve (at left ≈ 1210, 130 vs
+129; at ≈ 950, 28 vs 22). Implementation matches the table to within 37px at the worst point and
+under 20px elsewhere. Note the consequence at rest: the second card's left edge sits at ~1570, which
+puts it ~400px low, so only one card is level when the section opens — as in the reference.
+
 **Cards observed** MyWorker AI → Pulse Studio → Lofticorn → (a 4th, partially seen).
 
 ## A10 — Services set-piece (pinned, scrubbed) — the centrepiece

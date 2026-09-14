@@ -82,8 +82,12 @@ the partner row passes.
 ## Scene 09 — Selected work (horizontal track)
 **Frames** 095–121
 **User action** continuous vertical scrolling.
-**Visual changes** the left title column (`Selected work & explorations` + `VIEW ALL PROJECTS`) holds
-still while project cards translate leftward across the divider at x 730: **MyWorker AI** (096–108)
+**Visual changes** the left title column (`Selected work & explorations` + `VIEW ALL PROJECTS`), the
+divider and the project cards all translate leftward **together** — the column does not hold still,
+and by 106 the heading has left the viewport entirely. ⚠️ This entry previously said the column held
+still; that was wrong. Cross-correlating the heading band against the card band frame by frame gives
+the same displacement at three different scroll speeds: 99→100 118/119 px, 100→101 99/99, 101→102
+28/28, 102→103 46/46. One rigid track, not a parallax pair. Cards: **MyWorker AI** (096–108)
 → **Pulse Studio** (104–116) → **Lofticorn** (109–121) → a 4th card entering at 120. Large Δ spikes
 at 104/108/113/116 mark each new card crossing the frame.
 **Animation** A09.

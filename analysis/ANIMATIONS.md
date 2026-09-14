@@ -122,9 +122,15 @@ but never on screen. Verified visible across the whole range (card top y=875 →
 ## A09 — Horizontal work track (scrubbed)
 **Element** ProjectCard row.
 **Trigger** ScrollTrigger pin + scrub over the Selected-work section.
-**Mapping** `x = -progress × (trackWidth − viewportRight)`; the title column is `position: sticky`.
-**Evidence** frames 096–120: cards translate steadily left while the heading stays fixed; a card's
-left edge moves ~130 px per frame during steady scrolling.
+**Mapping** `x = -progress × (rowWidth − viewportWidth)` applied to the **whole row** — title column,
+divider and cards together. The title column is **not** sticky.
+**Evidence** frames 096–120: a card's left edge moves ~130 px per frame during steady scrolling, and
+the heading moves by the *same* amount in the same interval. Cross-correlation of the heading band
+against the card band: 99→100 118/119 px, 100→101 99/99 (r 0.999/0.885), 101→102 28/28, 102→103
+46/46. ⚠️ This entry previously claimed `position: sticky` and "the heading stays fixed" — both were
+wrong, and frames 098–102 show the heading sliding out of frame.
+**Cost** none: the cards used to travel `track − (vw − 730)` and the row travels `730 + track − vw`,
+the same number, because 730 is the title column (698) plus the page padding (32).
 **Easing** linear (scrub); Lenis supplies the inertia.
 **Cards observed** MyWorker AI → Pulse Studio → Lofticorn → (a 4th, partially seen).
 

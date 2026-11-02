@@ -171,14 +171,22 @@ export function KeyFacts() {
                      * -0.02em was tuned for a grotesque sans, not a high-contrast serif.
                      */}
                     {/*
-                     * translate-y: the em box centres by line-height, but PP
+                     * translate-y/x: `place-items-center` centres the span's
+                     * own box, but that box is not where the ink sits. PP
                      * Editorial New's "5" sits high within its own em (the
-                     * descender space below it is mostly empty), so a
-                     * geometrically centred box still reads optically high.
-                     * Nudged down to its visual centre, measured off a
-                     * render at this size.
+                     * descender space below it is mostly empty) — fixed with
+                     * translate-y. Horizontally the bounding box (including
+                     * the "+") was already dead-centre (±0.5px), but the ink
+                     * itself reads left of that: the "+" is a thin mark
+                     * floating in the upper-right corner of the box and
+                     * contributes almost no visual weight, so the "5" alone —
+                     * which does nearly all the work for the eye — centroids
+                     * about 5px left of the circle's centre. translate-x
+                     * nudges the whole glyph right to its ink centre, not
+                     * its box centre. Both measured off a render at this
+                     * size (101px/43px); re-check if the size changes again.
                      */}
-                    <span className="font-editorial block translate-y-[12px] text-[101px] leading-none font-light tracking-normal">
+                    <span className="font-editorial block translate-x-[5px] translate-y-[12px] text-[101px] leading-none font-light tracking-normal">
                       {s.value}
                       <sup className="text-[43px]">+</sup>
                     </span>

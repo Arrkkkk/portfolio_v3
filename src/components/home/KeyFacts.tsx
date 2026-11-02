@@ -170,7 +170,15 @@ export function KeyFacts() {
                      * can't give. Tracking reset to normal — the display face's tight
                      * -0.02em was tuned for a grotesque sans, not a high-contrast serif.
                      */}
-                    <span className="font-editorial text-[101px] leading-none font-light tracking-normal">
+                    {/*
+                     * translate-y: the em box centres by line-height, but PP
+                     * Editorial New's "5" sits high within its own em (the
+                     * descender space below it is mostly empty), so a
+                     * geometrically centred box still reads optically high.
+                     * Nudged down to its visual centre, measured off a
+                     * render at this size.
+                     */}
+                    <span className="font-editorial block translate-y-[12px] text-[101px] leading-none font-light tracking-normal">
                       {s.value}
                       <sup className="text-[43px]">+</sup>
                     </span>

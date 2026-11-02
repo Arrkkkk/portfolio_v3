@@ -108,16 +108,56 @@ export function KeyFacts() {
                 color: s.kind === "circle" ? "#1a1a1a" : "#f2f2f2",
               }}
             >
-              {s.kind !== "circle" && s.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={s.image}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : null}
-
               <p className="relative z-10 text-center label-mono">{s.label}</p>
+
+              {s.kind !== "circle" && s.image ? (
+                /*
+                 * In normal flex flow between the label and the bottom row,
+                 * not absolutely positioned over the whole card — that was
+                 * the first version, sized as a fixed percentage (60%) of the
+                 * card's own height, and it broke at the `sm` grid breakpoint
+                 * (640px): there the grid goes from 1 column to 2, so the
+                 * card itself gets narrower and, via `aspect-[330/407]`,
+                 * shorter — but the label and the bottom block (copy + the
+                 * large value number) are set in fixed px and do not shrink
+                 * with it. A percentage tuned safe at the 1710px reference
+                 * width (measured: 41px clear above, 10px below) overlapped
+                 * the bottom block by 26px at 640px. Checked across five
+                 * widths (1710/1280/900/640/390), not assumed from one.
+                 *
+                 * `flex-1` makes this wrapper BE the leftover space between
+                 * the label and the bottom row, whatever that space actually
+                 * is at the current breakpoint — a structural guarantee
+                 * against overlap rather than a number that has to be
+                 * re-checked every time card content or a breakpoint changes.
+                 * `items-center justify-center` then centres the image inside
+                 * that space on both axes, and `max-h-[85%] max-w-[85%]`
+                 * leaves a visible margin inside it rather than touching edge
+                 * to edge.
+                 *
+                 * No `object-cover`: the artwork is not the card's own
+                 * 330:407 aspect (it is 691:1016, taller and narrower), and
+                 * the brief is not to crop it. A plain `<img>` with only
+                 * max-height/max-width set (no explicit width/height) already
+                 * scales to fit while keeping its own aspect ratio;
+                 * `object-contain` is there for clarity, not doing anything
+                 * additional on its own here.
+                 *
+                 * The leftover space inside the margin, and between the
+                 * image and the card's edges, is NOT empty — the card's own
+                 * `tint` is sampled from the artwork's own flat background
+                 * (see stats.ts), so that space reads as more of the same
+                 * background rather than a gap around a pasted-on rectangle.
+                 */
+                <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.image}
+                    alt=""
+                    className="max-h-[85%] max-w-[85%] object-contain"
+                  />
+                </div>
+              ) : null}
 
               {s.kind === "circle" ? (
                 <>

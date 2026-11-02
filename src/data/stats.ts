@@ -23,8 +23,26 @@ export const stats: Stat[] = [
     label: "IDEAS → REALITY",
     copy: ["Turning concepts & problems", "into things you can actually use."],
     value: "10",
-    image: "",
-    tint: "#6b3a2c",
+    /*
+     * Owner-supplied illustration, kept at its own 691:1016 aspect — not
+     * cropped to the card's 330:407 — and resized down (691×1016 → 480×706)
+     * and re-encoded to webp for size. KeyFacts.tsx renders it with
+     * object-contain inside a box, not object-cover filling the card, so
+     * nothing is cut off.
+     */
+    image: "/images/stats/ideas-reality.webp",
+    /*
+     * Sampled from the artwork itself, not matched by eye: (47, 23, 13) is
+     * the single most common exact pixel value across the whole 691×1016
+     * image — 153358 of 702k pixels, 21.8%, nearly 5× the runner-up and the
+     * next several values are all within ±1 of it (grain noise around the
+     * same flat fill). That is the card's own background, not a blend of it
+     * with the artwork — a strip-average instead returned a slightly
+     * different value that was visibly off and would have kept the seam.
+     * Matching it exactly is what lets the image's own background and the
+     * card's tint disappear into each other with no visible rectangle.
+     */
+    tint: "#2f170d",
   },
   {
     kind: "circle",

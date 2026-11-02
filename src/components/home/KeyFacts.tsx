@@ -170,9 +170,9 @@ export function KeyFacts() {
                      * can't give. Tracking reset to normal — the display face's tight
                      * -0.02em was tuned for a grotesque sans, not a high-contrast serif.
                      */}
-                    <span className="font-editorial text-[52px] leading-none font-light tracking-normal">
+                    <span className="font-editorial text-[72px] leading-none font-light tracking-normal">
                       {s.value}
-                      <sup className="text-[22px]">+</sup>
+                      <sup className="text-[30px]">+</sup>
                     </span>
                   </div>
                   <p className="relative z-10 mt-auto text-center text-[14px] leading-[1.3] text-ink-mid">

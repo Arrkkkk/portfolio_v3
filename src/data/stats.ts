@@ -55,7 +55,15 @@ export const stats: Stat[] = [
     label: "THE TOOLKIT",
     copy: ["Different technologies.", "One focus: building it right."],
     value: "15",
-    image: "",
+    /*
+     * Owner-supplied illustration, background-removed (real alpha, checked
+     * channel-by-channel — not a flat colour cutout) rather than sampled and
+     * tinted like the first card's. Transparent is the better fit here:
+     * the card's own #2a2a2a shows straight through with nothing to seam
+     * against, so there's no background colour to match in the first place.
+     * Kept at its own 520:484 aspect, not cropped to 330:407.
+     */
+    image: "/images/stats/the-toolkit.webp",
     tint: "#2a2a2a",
   },
 ];

@@ -45,6 +45,21 @@ const neueMontreal = localFont({
  * one of them instead, so the substitute glyph is at least monospace. Verified
  * with CSS.getPlatformFontsForNode rather than by eye.
  */
+/*
+ * PP Editorial New (Light) — the owner's own font file, not a free
+ * substitute. Used only for the three Key facts card numerals ("10+", "5+",
+ * "15+"): its exaggerated thick-curve/hairline-stem contrast is the point
+ * there, which Neue Montreal (a grotesque, uniform stroke weight) cannot
+ * produce. Subset to digits + "+" only (pyftsubset, U+0030-0039 and U+002B) —
+ * it is never used for running text, so the rest of the glyph set is dead
+ * weight.
+ */
+const editorialNew = localFont({
+  src: [{ path: "./fonts/EditorialNew-Light.woff2", weight: "300", style: "normal" }],
+  variable: "--font-editorial-new",
+  display: "swap",
+});
+
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
@@ -66,7 +81,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${neueMontreal.variable} ${jetbrainsMono.variable} antialiased`}
+      className={`${neueMontreal.variable} ${editorialNew.variable} ${jetbrainsMono.variable} antialiased`}
     >
       <body>
         <ChapterProvider>

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# licensed font sources — only the subset woff2 in src/app/fonts/ is committed
+/assets/fonts/

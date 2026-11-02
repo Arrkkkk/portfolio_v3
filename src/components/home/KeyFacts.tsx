@@ -131,8 +131,8 @@ export function KeyFacts() {
                  * against overlap rather than a number that has to be
                  * re-checked every time card content or a breakpoint changes.
                  * `items-center justify-center` then centres the image inside
-                 * that space on both axes, and `max-h-[85%] max-w-[85%]`
-                 * leaves a visible margin inside it rather than touching edge
+                 * that space on both axes, and `max-h-[95%] max-w-[95%]`
+                 * leaves a thin margin inside it rather than touching edge
                  * to edge.
                  *
                  * No `object-cover`: the artwork is not the card's own
@@ -154,7 +154,7 @@ export function KeyFacts() {
                   <img
                     src={s.image}
                     alt=""
-                    className="max-h-[85%] max-w-[85%] object-contain"
+                    className="max-h-[95%] max-w-[95%] object-contain"
                   />
                 </div>
               ) : null}
@@ -162,9 +162,17 @@ export function KeyFacts() {
               {s.kind === "circle" ? (
                 <>
                   <div className="relative z-10 mx-auto mt-8 grid h-[190px] w-[190px] place-items-center rounded-full bg-white">
-                    <span className="text-[40px] leading-none tracking-[-0.02em]">
+                    {/*
+                     * PP Editorial New Light — the owner's font file, self-hosted and
+                     * subset to digits + "+" only (layout.tsx). Swapped in for the
+                     * numerals alone: its thick-curve/hairline-stem contrast is the
+                     * whole point here, which Neue Montreal's uniform grotesque stroke
+                     * can't give. Tracking reset to normal — the display face's tight
+                     * -0.02em was tuned for a grotesque sans, not a high-contrast serif.
+                     */}
+                    <span className="font-editorial text-[52px] leading-none font-light tracking-normal">
                       {s.value}
-                      <sup className="text-[18px]">+</sup>
+                      <sup className="text-[22px]">+</sup>
                     </span>
                   </div>
                   <p className="relative z-10 mt-auto text-center text-[14px] leading-[1.3] text-ink-mid">
@@ -189,9 +197,10 @@ export function KeyFacts() {
                       ))}
                     </p>
                   </div>
-                  <span className="text-[48px] leading-none tracking-[-0.02em]">
+                  {/* PP Editorial New Light — see the circle card above for why. */}
+                  <span className="font-editorial text-[60px] leading-none font-light tracking-normal">
                     {s.value}
-                    <sup className="text-[20px]">+</sup>
+                    <sup className="text-[24px]">+</sup>
                   </span>
                 </div>
               )}

@@ -51,6 +51,11 @@
    */
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo,
     Consolas, "DejaVu Sans Mono", monospace;
+  /*
+   * Key facts card numerals only ("10+", "5+", "15+") — see layout.tsx. Not a
+   * display-face replacement: everything else still runs on --font-display.
+   */
+  --font-editorial: var(--font-editorial-new), "PP Editorial New", Georgia, serif;
 
   /* --- type scale (fluid, anchored to the measured 1710px values) --- */
   --text-hero: clamp(40px, 4.45vw, 84px);

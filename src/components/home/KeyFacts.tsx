@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { ChapterSection } from "@/components/chrome/ChapterTheme";
 import { BlurText } from "@/components/primitives/BlurText";
 import { LOCK_PX } from "@/components/home/ChapterWipe";
-import { stats, tools, toolsLabel } from "@/data/stats";
+import { stats, statsNote, tools, toolsLabel } from "@/data/stats";
 
 /**
  * PAGES §04 / A08 — three 330 × 407 cards in a centred 1032px container with
@@ -66,9 +66,22 @@ export function KeyFacts() {
       */}
       <div ref={root} className="relative z-30 page-x py-[120px]">
         <div className="kf-headings text-center">
-          <BlurText manual as="h2" text="Key facts" className="text-display track-display" />
+          {/*
+            font-medium (500) is a deliberate deviation from "weight 400
+            display only" — the owner's call, logged in CLAUDE.md alongside
+            the marquee's. It is a real cut, not a synthesized one: both
+            weights are self-hosted and `font-synthesis-weight: none` is set
+            globally, so an unloaded weight would silently fall back to 400
+            rather than fake it.
+          */}
+          <BlurText
+            manual
+            as="h2"
+            text="Key facts"
+            className="text-display track-display font-medium"
+          />
           <p className="mx-auto mt-5 max-w-[240px] text-[14px] leading-[1.3] text-ink-mid">
-            A snapshot of my experience and impact.
+            {statsNote}
           </p>
         </div>
 
@@ -95,23 +108,87 @@ export function KeyFacts() {
                 color: s.kind === "circle" ? "#1a1a1a" : "#f2f2f2",
               }}
             >
-              {s.kind !== "circle" && s.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={s.image}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : null}
-
               <p className="relative z-10 text-center label-mono">{s.label}</p>
+
+              {s.kind !== "circle" && s.image ? (
+                /*
+                 * In normal flex flow between the label and the bottom row,
+                 * not absolutely positioned over the whole card — that was
+                 * the first version, sized as a fixed percentage (60%) of the
+                 * card's own height, and it broke at the `sm` grid breakpoint
+                 * (640px): there the grid goes from 1 column to 2, so the
+                 * card itself gets narrower and, via `aspect-[330/407]`,
+                 * shorter — but the label and the bottom block (copy + the
+                 * large value number) are set in fixed px and do not shrink
+                 * with it. A percentage tuned safe at the 1710px reference
+                 * width (measured: 41px clear above, 10px below) overlapped
+                 * the bottom block by 26px at 640px. Checked across five
+                 * widths (1710/1280/900/640/390), not assumed from one.
+                 *
+                 * `flex-1` makes this wrapper BE the leftover space between
+                 * the label and the bottom row, whatever that space actually
+                 * is at the current breakpoint — a structural guarantee
+                 * against overlap rather than a number that has to be
+                 * re-checked every time card content or a breakpoint changes.
+                 * `items-center justify-center` then centres the image inside
+                 * that space on both axes, and `max-h-[95%] max-w-[95%]`
+                 * leaves a thin margin inside it rather than touching edge
+                 * to edge.
+                 *
+                 * No `object-cover`: the artwork is not the card's own
+                 * 330:407 aspect (it is 691:1016, taller and narrower), and
+                 * the brief is not to crop it. A plain `<img>` with only
+                 * max-height/max-width set (no explicit width/height) already
+                 * scales to fit while keeping its own aspect ratio;
+                 * `object-contain` is there for clarity, not doing anything
+                 * additional on its own here.
+                 *
+                 * The leftover space inside the margin, and between the
+                 * image and the card's edges, is NOT empty — the card's own
+                 * `tint` is sampled from the artwork's own flat background
+                 * (see stats.ts), so that space reads as more of the same
+                 * background rather than a gap around a pasted-on rectangle.
+                 */
+                <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.image}
+                    alt=""
+                    className="max-h-[95%] max-w-[95%] object-contain"
+                  />
+                </div>
+              ) : null}
 
               {s.kind === "circle" ? (
                 <>
                   <div className="relative z-10 mx-auto mt-8 grid h-[190px] w-[190px] place-items-center rounded-full bg-white">
-                    <span className="text-[40px] leading-none tracking-[-0.02em]">
+                    {/*
+                     * PP Editorial New Light — the owner's font file, self-hosted and
+                     * subset to digits + "+" only (layout.tsx). Swapped in for the
+                     * numerals alone: its thick-curve/hairline-stem contrast is the
+                     * whole point here, which Neue Montreal's uniform grotesque stroke
+                     * can't give. Tracking reset to normal — the display face's tight
+                     * -0.02em was tuned for a grotesque sans, not a high-contrast serif.
+                     */}
+                    {/*
+                     * translate-y/x: `place-items-center` centres the span's
+                     * own box, but that box is not where the ink sits. PP
+                     * Editorial New's "5" sits high within its own em (the
+                     * descender space below it is mostly empty) — fixed with
+                     * translate-y. Horizontally the bounding box (including
+                     * the "+") was already dead-centre (±0.5px), but the ink
+                     * itself reads left of that: the "+" is a thin mark
+                     * floating in the upper-right corner of the box and
+                     * contributes almost no visual weight, so the "5" alone —
+                     * which does nearly all the work for the eye — centroids
+                     * about 5px left of the circle's centre. translate-x
+                     * nudges the whole glyph right to its ink centre, not
+                     * its box centre. Both measured off a render at this
+                     * size (101px/43px); re-check if the size changes again.
+                     */}
+                    <span className="font-editorial block translate-x-[5px] translate-y-[12px] text-[101px] leading-none font-light tracking-normal">
                       {s.value}
-                      <sup className="text-[18px]">+</sup>
+                      <sup className="text-[43px]">+</sup>
                     </span>
                   </div>
                   <p className="relative z-10 mt-auto text-center text-[14px] leading-[1.3] text-ink-mid">
@@ -136,9 +213,10 @@ export function KeyFacts() {
                       ))}
                     </p>
                   </div>
-                  <span className="text-[48px] leading-none tracking-[-0.02em]">
+                  {/* PP Editorial New Light — see the circle card above for why. */}
+                  <span className="font-editorial text-[60px] leading-none font-light tracking-normal">
                     {s.value}
-                    <sup className="text-[20px]">+</sup>
+                    <sup className="text-[24px]">+</sup>
                   </span>
                 </div>
               )}
@@ -156,11 +234,29 @@ export function KeyFacts() {
         */}
         <div className="kf-tools mt-[116px] text-center">
           <BlurText manual as="p" text={toolsLabel} className="label-mono text-ink-mid" />
-          <ul className="kf-tools-list mx-auto mt-8 flex max-w-[690px] flex-wrap items-center justify-center">
+          {/*
+            The 32px item padding is the reference's spacing and only holds
+            where there is room for it. Measured: the five names are 289px of
+            text, so at `px-8` the row needs 609px and the available width is
+            the viewport less the 32px page padding — it ran out at 640px and
+            wrapped "Figma" onto a line of its own.
+
+            The wrap also exposed the divider: a `border-l` on every item but
+            the first means whichever item starts a wrapped row keeps its
+            border, so the second line opened with a hairline attached to
+            nothing. Hence `sm:border-l` — below the breakpoint the rule is
+            dropped entirely and `gap` carries the separation, which cannot
+            orphan. Above it the padding steps down before the row runs out of
+            room, so it stays on one line and the dividers always sit between
+            two names.
+          */}
+          <ul className="kf-tools-list mx-auto mt-8 flex max-w-[690px] flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:gap-x-0">
             {tools.map((t, i) => (
               <li
                 key={t}
-                className={`px-8 text-[18px] leading-none ${i > 0 ? "border-l border-black/12" : ""}`}
+                className={`px-0 text-[18px] leading-none sm:px-6 lg:px-8 ${
+                  i > 0 ? "border-black/12 sm:border-l" : ""
+                }`}
               >
                 {t}
               </li>

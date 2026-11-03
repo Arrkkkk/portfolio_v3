@@ -68,7 +68,7 @@ y 700    5 partner wordmarks + hairline dividers, centred, w ~690
 
 ## 05 Selected work & explorations — frames 095–121
 ```
-sticky left column
+left title column (travels with the track — NOT sticky; see A09)
   y 412  h2 "Selected work"       x 100
   y 486  h2 "& explorations"      x 100
   y 603  MonoLink "VIEW ALL PROJECTS"  x 222, w 168

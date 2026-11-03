@@ -82,8 +82,33 @@ const HEAD_RUN = 0.9;
 const CARD_CUE = 1.9;
 /** Cards finish over their own scroll after the cue, per the owner's choice. */
 const CARD_RUN = 1.5;
-const CARD_STAGGER = 0.198; // same stagger:duration ratio as the tuned 0.145/1.1
+/**
+ * Each card starts as the one before it reaches half its rotation. On a linear
+ * (`ease: "none"`) tween half the duration *is* half the rotation, so this is
+ * literally CARD_RUN / 2 rather than a number tuned to look like it.
+ *
+ * It was 0.198 — 13% — which read as the three arriving almost together. The
+ * cards now span CARD_RUN * 2 instead of CARD_RUN + 2 * 0.198, so the sequence
+ * is 29% longer in timeline units; PACE_REF below turns that into 29% more
+ * scroll rather than 29% less scroll per unit.
+ *
+ * Nothing extra is needed to make it rewind on the same cues. The whole
+ * timeline is scrubbed, so scrolling back up plays these exact cues backwards.
+ */
+const CARD_STAGGER = CARD_RUN / 2;
 const TOTAL = CARD_CUE + CARD_RUN + CARD_STAGGER * 2;
+
+/**
+ * The timeline length STRETCH was tuned against. The window is scaled by
+ * TOTAL / PACE_REF as well, which keeps pixels of scroll per timeline unit
+ * constant when a cue changes: lengthening the sequence then costs scroll
+ * distance instead of silently re-pacing every cue that was already tuned —
+ * the bands would have run 29% faster against the scrollbar for free.
+ *
+ * So STRETCH stays the owner's knob ("this much more scrolling for the same
+ * transition") and means the same thing whatever the cues are.
+ */
+const PACE_REF = 3.796;
 
 /**
  * The lock: Key facts rises to its cue, holds still while all three cards
@@ -102,8 +127,12 @@ const TOTAL = CARD_CUE + CARD_RUN + CARD_STAGGER * 2;
  * rather than a jump: the transform that pins the block is exactly cancelled
  * by the height it consumed, so at the end of the lock the block is already
  * where the layout would have put it.
+ *
+ * It tracks the card rotation's length. At a 13% stagger the three spanned
+ * 1.896 units and 820px covered them; at 50% they span CARD_RUN * 2 = 3.0
+ * units, and at the unchanged ~424px per unit that is ~468px more.
  */
-export const LOCK_PX = 820;
+export const LOCK_PX = 1288;
 /**
  * Viewport y the content block holds at; the heading sits 120px below it, so
  * it locks around 280. Higher than this and the lock engages too late — it is
@@ -178,7 +207,7 @@ export function ChapterWipe() {
         // so its layout position is that much lower. Counting it would inflate
         // the window and stretch every cue apart from the pacing that was set.
         const natural = docTop(g) - LOCK_PX - window.innerHeight * 0.15;
-        return start() + (natural - start()) * STRETCH;
+        return start() + (natural - start()) * STRETCH * (TOTAL / PACE_REF);
       };
 
       /*

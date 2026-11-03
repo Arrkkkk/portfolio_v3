@@ -33,7 +33,29 @@
   /* --- families --- */
   --font-display: var(--font-neue-montreal), "PP Neue Montreal", "Neue Montreal",
     "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  /*
+   * Menlo/Consolas/DejaVu carry the arrow; JetBrains Mono as we load it does
+   * not. It comes from Google Fonts at `subsets: ["latin"]`, and that range
+   * stops at U+2191/U+2193 — it has the up and down arrows but not U+2192.
+   * Verified with CSS.getPlatformFontsForNode: the right-arrow was the single
+   * glyph in the label falling through to *Arial*, a proportional sans sitting
+   * inside monospace uppercase.
+   *
+   * That is not new and is not about the Key facts labels: MonoLink defaults
+   * `arrow = "→"`, so every "VIEW ALL PROJECTS →" on the site was already
+   * drawing its arrow in Arial. Naming real monospace families ahead of the
+   * generic keeps the substitute a monospace one on every platform we can
+   * name. It is still a substitute — the only way to get JetBrains Mono's own
+   * arrow is to self-host it subset with arrows, the way the display face
+   * already is.
+   */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo,
+    Consolas, "DejaVu Sans Mono", monospace;
+  /*
+   * Key facts card numerals only ("10+", "5+", "15+") — see layout.tsx. Not a
+   * display-face replacement: everything else still runs on --font-display.
+   */
+  --font-editorial: var(--font-editorial-new), "PP Editorial New", Georgia, serif;
 
   /* --- type scale (fluid, anchored to the measured 1710px values) --- */
   --text-hero: clamp(40px, 4.45vw, 84px);

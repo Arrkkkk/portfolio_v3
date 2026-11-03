@@ -74,7 +74,23 @@ export function BlurText({
       } else {
         gsap.fromTo(chars, from, {
           ...to,
-          scrollTrigger: { trigger: el, start: "top 75%", once: true },
+          /*
+           * Replays. It was `once: true`, which tore the trigger down after the
+           * first resolve — so the effect existed only on the first pass of a
+           * given page load and every heading was already settled on the way
+           * back down.
+           *
+           * `reset` on leaveBack, not on leave: the glyphs return to the
+           * blurred state only when the heading has gone back *below* the
+           * start line, which is off-screen or entering. Resetting on `leave`
+           * instead would blank headings that had simply scrolled up past the
+           * top of the viewport.
+           */
+          scrollTrigger: {
+            trigger: el,
+            start: "top 75%",
+            toggleActions: "restart none none reset",
+          },
         });
       }
     }, el);

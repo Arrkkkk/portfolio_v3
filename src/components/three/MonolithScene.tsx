@@ -28,26 +28,82 @@ function Monolith({ progress }: { progress: React.RefObject<number> }) {
   const textures = useMemo(() => createStoneTextures(), []);
 
   /*
-   * A subdivided box (not the bare 1-segment default) with each vertex
-   * nudged along its own normal by a little deterministic noise — gives
-   * the silhouette a slightly broken, non-mechanical edge instead of a
-   * perfect machined bevel, closer to how the real scanned material's own
-   * chipped/cracked/uneven edges (see stoneTexture.ts) read. `seeded` is
-   * the project's own deterministic hash (lib/utils), same one already
-   * used for the scatter/smoke placement, so this geometry is identical
-   * on every load rather than shifting on each client re-render.
+   * A subdivided box (not the bare 1-segment default), carved by a
+   * handful of discrete craters rather than flat per-vertex jitter — gives
+   * the silhouette a broken, chipped edge instead of a clean machined
+   * square, closer to how the real scanned material's own
+   * chipped/cracked/uneven edges (see stoneTexture.ts) read.
+   *
+   * Craters pull each affected vertex toward the crater's OWN centre in
+   * full 3D, not along the vertex's own face normal — that distinction
+   * matters a lot here. A face-normal-only displacement (tried first,
+   * twice) can only ever push a front-facing vertex toward/away from the
+   * camera, never sideways: the camera-facing outline is defined by the
+   * front face's own edge column, and under a near-face-on view that
+   * column's X/Y never moves no matter how deep the carve, so the
+   * silhouette stayed a near-perfect rectangle regardless of amplitude.
+   * Only the thin, nearly edge-on side faces could move in X/Y, so their
+   * carving barely registered on screen. Pulling toward the crater centre
+   * instead moves every affected vertex — front face included — in
+   * whichever direction actually shrinks it toward that chip, which is
+   * what makes a bite visible in the outline itself, not just in shading.
+   *
+   * `CHIPS` is a small deterministic list (seeded — identical on every
+   * load, like the scatter/smoke placement elsewhere) of crater centres
+   * scattered across the box's volume; most end up near enough to an edge
+   * or corner to bite into it. At each vertex only the deepest crater in
+   * reach wins (summing overlaps would stack into unrealistic pits), and
+   * a small fine-grain term rides on top for surface texture.
+   * 20×20 face segments (up from 10×10) give the crater boundaries enough
+   * resolution to have real shape instead of blurring into a gradient.
    */
   const geometry = useMemo(() => {
-    const geo = new THREE.BoxGeometry(2.9, 3.0, 0.6, 10, 10, 3);
+    const geo = new THREE.BoxGeometry(2.9, 3.0, 0.6, 20, 20, 5);
     const pos = geo.attributes.position;
     const normal = geo.attributes.normal;
+
+    const CHIPS = Array.from({ length: 22 }, (_, i) => {
+      // Depth as a fraction of this chip's own radius (not independently
+      // random) — a deep narrow pull folds the surface into a sharp cone
+      // at the chip centre instead of reading as a dent. Capping the
+      // depth:radius ratio around 0.1-0.28 keeps every chip a shallow
+      // bowl, however big or small it is.
+      const radius = 0.3 + seeded(i * 7.1 + 4) * 0.55;
+      return {
+        x: (seeded(i * 7.1 + 1) - 0.5) * 3.2,
+        y: (seeded(i * 7.1 + 2) - 0.5) * 3.4,
+        z: (seeded(i * 7.1 + 3) - 0.5) * 0.9,
+        radius,
+        depth: radius * (0.1 + seeded(i * 7.1 + 5) * 0.18),
+      };
+    });
+
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const y = pos.getY(i);
       const z = pos.getZ(i);
-      const n = seeded(x * 300 + y * 700 + z * 1300) - 0.5;
-      const amt = 0.05 * n;
-      pos.setXYZ(i, x + normal.getX(i) * amt, y + normal.getY(i) * amt, z + normal.getZ(i) * amt);
+
+      let bestPull = 0;
+      let bestDir: [number, number, number] = [0, 0, 0];
+      for (const c of CHIPS) {
+        const dx = x - c.x;
+        const dy = y - c.y;
+        const dz = z - c.z;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d >= c.radius || d < 1e-5) continue;
+        const t = 1 - d / c.radius;
+        const pull = c.depth * t * t;
+        if (pull > bestPull) {
+          bestPull = pull;
+          bestDir = [dx / d, dy / d, dz / d];
+        }
+      }
+
+      const fine = seeded(x * 280 + y * 340 + z * 410) - 0.5;
+      const nx = x - bestDir[0] * bestPull + normal.getX(i) * fine * 0.025;
+      const ny = y - bestDir[1] * bestPull + normal.getY(i) * fine * 0.025;
+      const nz = z - bestDir[2] * bestPull + normal.getZ(i) * fine * 0.025;
+      pos.setXYZ(i, nx, ny, nz);
     }
     geo.computeVertexNormals();
     return geo;

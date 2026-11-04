@@ -415,20 +415,23 @@ function ServiceCallout({
      * the corner barely-there, matching the reference rather than a
      * rounder "card" radius.
      *
-     * Size/spacing measured directly off a reference capture as pixel
-     * ratios of its viewport (not read-by-eye px, which a screenshot's
-     * own DPI/window-width can throw off): card ≈0.255 of viewport width
-     * → 436px at the 1710px reference; icon ≈0.053 → ~90px, far bigger
-     * than it looks relative to the title at a glance; the title→
-     * description gap is a good ~0.27 of the card's own height. The
-     * 30px title / 14px description were already right (COMPONENTS.md),
-     * confirmed against the same ratios.
+     * Size/spacing originally measured directly off a reference capture
+     * as pixel ratios of its viewport (not read-by-eye px, which a
+     * screenshot's own DPI/window-width can throw off): card ≈0.255 of
+     * viewport width → 436px at the 1710px reference, 30px title /
+     * 14px description, icon ≈0.053 → ~90px.
+     *
+     * Card width/height and both type sizes are now bumped above that —
+     * owner's explicit call (card ~15% wider, a bit taller, title/
+     * description sized up because they were reading as too small) —
+     * not a re-measurement. Icon size and the frosted-panel treatment
+     * are untouched.
      */
     <div
-      className={`max-w-[80vw] rounded-panel bg-black/45 p-8 text-text-hi backdrop-blur-md sm:max-w-[436px] sm:p-10 ${className ?? ""}`}
+      className={`max-w-[80vw] rounded-panel bg-black/45 p-8 text-text-hi backdrop-blur-md sm:max-w-[501px] sm:p-12 ${className ?? ""}`}
     >
       <div className="flex items-start gap-6">
-        <h3 className="text-title-md tracking-[-0.01em]">
+        <h3 className="text-[30px] leading-[1.2] tracking-[-0.01em] sm:text-[42px]">
           {service.lines[0]}
           {service.lines[1] ? (
             <>
@@ -442,7 +445,7 @@ function ServiceCallout({
           className="mt-1 h-10 w-10 shrink-0 opacity-70 sm:h-[90px] sm:w-[90px]"
         />
       </div>
-      <p className="mt-6 text-[14px] leading-[1.3] text-text-mid sm:mt-16">
+      <p className="mt-6 text-[17px] leading-[1.35] text-text-mid sm:mt-[72px] sm:text-[20px]">
         {service.description}
       </p>
     </div>

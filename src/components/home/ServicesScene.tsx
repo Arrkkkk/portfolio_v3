@@ -45,6 +45,7 @@ export function ServicesScene() {
     if (!sec || reduced) return;
 
     gsap.registerPlugin(ScrollTrigger);
+    let st: ScrollTrigger | undefined;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { ease: "none" },
@@ -53,6 +54,14 @@ export function ServicesScene() {
           start: "top top",
           end: "bottom bottom",
           scrub: true,
+          /*
+           * The scatter below reads window.innerWidth/innerHeight in its
+           * function-based x/y — those only get re-evaluated when GSAP
+           * invalidates the tween. Without this, a real later window
+           * resize would leave the throw amounts sized to whatever the
+           * window was at mount, not the new size.
+           */
+          invalidateOnRefresh: true,
           onUpdate: (self) => {
             const p = self.progress;
             progress.current = p;
@@ -76,12 +85,25 @@ export function ServicesScene() {
         .to(".svc-canvas", { opacity: 1, duration: 0.14 }, 0.1)
         .to(".svc-chrome", { color: "#f2f2f2", duration: 0.12 }, 0.12);
 
-      // P3 — glyphs detach as independent bodies and fall out of frame.
+      /*
+       * P3 — glyphs detach as independent bodies and fall out of frame.
+       *
+       * The throw used to be flat pixels (±700/±450), tuned by eye against
+       * the 1710px reference capture. That made it vanish at the reference
+       * width itself: ±700px is only ~41% of 1710px, faded out over a
+       * 0.14-of-scroll window with an ease that front-loads slow movement
+       * — barely a drift. The same ±700px is 1.5–2x an actual phone's width,
+       * which is why it only ever read as a real "explosion" there. Scaling
+       * by the live viewport (90% of width, 70% of height) means letters
+       * always clear the screen before fading, at any width — the effect
+       * that was only ever visible by accident on a narrow window becomes
+       * the effect everywhere.
+       */
       tl.to(
         ".svc-char",
         {
-          x: (i: number) => (seeded(i + 1) - 0.5) * 1400,
-          y: (i: number) => (seeded(i + 41) - 0.5) * 900,
+          x: (i: number) => (seeded(i + 1) - 0.5) * window.innerWidth * 0.9,
+          y: (i: number) => (seeded(i + 41) - 0.5) * window.innerHeight * 0.7,
           rotate: (i: number) => (seeded(i + 91) - 0.5) * 540,
           opacity: 0,
           ease: "power2.in",
@@ -91,9 +113,35 @@ export function ServicesScene() {
         0.3,
       );
 
+      st = tl.scrollTrigger;
     }, sec);
 
-    return () => ctx.revert();
+    /*
+     * This trigger is created while `useIsDesktop()` (consumed by
+     * SelectedWork, above this section) is still mid-flight — that hook
+     * starts at `false` and only flips true in its own effect, one render
+     * later. SelectedWork's horizontal track is only pinned once it does,
+     * and that pin's spacer is what gives this section its real place in
+     * the document; before it exists, this trigger measures "top top"/
+     * "bottom bottom" thousands of pixels too high and gets baked in wrong.
+     *
+     * The normal fix — call the global ScrollTrigger.refresh() once things
+     * settle — does not work here: verified directly (gsap@3.13) that
+     * ScrollTrigger.refresh() leaves this specific instance's cached
+     * start/end untouched even though a *new* ScrollTrigger created on the
+     * same element at the same moment measures correctly. Calling
+     * .refresh() on the *instance itself* does correct it reliably, which
+     * is what this does, deferred two frames so SelectedWork's pin has
+     * definitely landed first.
+     */
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => st?.refresh());
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      ctx.revert();
+    };
   }, [reduced, pairs.length]);
 
   return (

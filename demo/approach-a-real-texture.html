@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Approach A — Real scanned texture</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0e0e0e; overflow: hidden; }
+  canvas { display: block; }
+  #label {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    font: 12px/1.4 ui-monospace, "JetBrains Mono", monospace;
+    color: #f2f2f2; text-transform: uppercase; letter-spacing: 0.04em;
+    background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 4px;
+    max-width: 360px;
+  }
+  #label b { font-weight: 600; }
+  #label span { color: #aaa; }
+</style>
+</head>
+<body>
+<div id="label">
+  <b>Approach A — Real scanned texture</b><br/>
+  <span>Poly Haven "Rock Boulder Dry" (CC0) — diffuse + normal + roughness + displacement.
+  Drag to rotate, scroll to zoom. Auto-rotates when idle.</span>
+</div>
+
+<script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 6.4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.NeutralToneMapping;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+const key = new THREE.DirectionalLight(0xe8ecff, 1.5);
+key.position.set(-5, 6, 5);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xb9a695, 0.5);
+fill.position.set(4, -2, 3);
+scene.add(fill);
+
+/*
+ * Real photographed/scanned CC0 material (Poly Haven "Rock Boulder Dry",
+ * dimitrios savva / rico cilliers — credit required by nobody since CC0,
+ * but noted anyway). This is the actual thing that makes the reference's
+ * rock look real: multi-scale, non-repeating surface detail baked from a
+ * physical scan, not synthesised. Nothing here is hand-tuned — it's
+ * stock maps dropped straight onto the geometry.
+ */
+const loader = new THREE.TextureLoader();
+const REPEAT = 1.4; // >1 so a single box face doesn't read as one obvious tile
+function loadMap(path, srgb) {
+  const t = loader.load(path);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(REPEAT, REPEAT);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const normalMap = loadMap("./assets/rock_nor.jpg", false);
+const roughnessMap = loadMap("./assets/rock_rough.jpg", false);
+
+/*
+ * The stock diffuse has a warm tan/ochre cast baked into the photo itself
+ * (the actual rock it was shot from). material.color (a multiply tint)
+ * can only ever scale that existing hue, never remove it — so no matter
+ * how light or dark the tint, it stays warm-toned underneath. A genuinely
+ * neutral grey stone needs the warmth taken OUT of the source pixels
+ * first: desaturate toward each pixel's own luminance (not full
+ * grayscale — keeping ~20% of the original colour avoids a flat,
+ * synthetic look), then apply the light-grey tint on top of THAT.
+ */
+const map = new THREE.Texture();
+map.wrapS = map.wrapT = THREE.RepeatWrapping;
+map.repeat.set(REPEAT, REPEAT);
+map.colorSpace = THREE.SRGBColorSpace;
+const diffImg = new Image();
+diffImg.onload = () => {
+  const size = diffImg.width;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(diffImg, 0, 0, size, size);
+  const id = ctx.getImageData(0, 0, size, size);
+  const d = id.data;
+  const KEEP = 0.2; // fraction of original colour kept; rest pulled to luminance
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    d[i] = lum + (r - lum) * KEEP;
+    d[i + 1] = lum + (g - lum) * KEEP;
+    d[i + 2] = lum + (b - lum) * KEEP;
+  }
+  ctx.putImageData(id, 0, 0);
+  map.image = c;
+  map.needsUpdate = true;
+};
+diffImg.src = "./assets/rock_diff.jpg";
+
+const material = new THREE.MeshStandardMaterial({
+  map,
+  normalMap,
+  normalScale: new THREE.Vector2(1.1, 1.1),
+  roughnessMap,
+  roughness: 0.92,
+  bumpScale: 0.07,
+  metalness: 0.02,
+  // Neutral mid-grey (R=G=B, no warm or cool lean) per the new reference
+  // — a true grey stone, not dark basalt. The desaturated map above is
+  // what makes this actually read as neutral; tinting warm source pixels
+  // with a grey multiply alone would still look faintly tan.
+  color: new THREE.Color(0x6e6e6e),
+});
+
+/*
+ * Engraving on top of the real scan: same technique as approach B
+ * (darken the bump map where the glyph is, so it reads as recessed, not
+ * a raised seal), just composited onto the loaded displacement photo
+ * instead of a from-scratch canvas. Has to wait for the real image to
+ * actually load before drawing on it.
+ */
+const dispImg = new Image();
+dispImg.crossOrigin = "anonymous";
+dispImg.onload = () => {
+  const size = dispImg.width;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(dispImg, 0, 0, size, size);
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 0.8;
+  ctx.fillStyle = "#000";
+  ctx.font = `600 ${size * 0.34}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.filter = `blur(${size * 0.004}px)`;
+  ctx.fillText("RA", size / 2, size / 2);
+  ctx.restore();
+  const bumpMap = new THREE.CanvasTexture(c);
+  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(REPEAT, REPEAT);
+  material.bumpMap = bumpMap;
+  material.needsUpdate = true;
+};
+dispImg.src = "./assets/rock_disp.jpg";
+
+/*
+ * Subdivided box (not a bare 1x1x1-segment BoxGeometry) with a little
+ * per-vertex noise along each vertex's own normal — gives the silhouette
+ * a slightly broken, non-mechanical edge instead of a perfect bevel.
+ * Lightweight version of what §3 of the writeup asked for; the real fix
+ * for a fully fractured edge is a proper displaced/sculpted mesh, but
+ * this alone reads very differently from a plain box at grazing angles.
+ */
+const geometry = new THREE.BoxGeometry(2.9, 3.0, 0.6, 10, 10, 3);
+const pos = geometry.attributes.position;
+const seeded = (x, y, z) => {
+  const n = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+  return n - Math.floor(n);
+};
+for (let i = 0; i < pos.count; i++) {
+  const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+  const n = seeded(x * 3, y * 3, z * 3) - 0.5;
+  const nx = geometry.attributes.normal.getX(i);
+  const ny = geometry.attributes.normal.getY(i);
+  const nz = geometry.attributes.normal.getZ(i);
+  const amt = 0.05 * n;
+  pos.setXYZ(i, x + nx * amt, y + ny * amt, z + nz * amt);
+}
+geometry.computeVertexNormals();
+
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3;
+controls.maxDistance = 14;
+
+let idle = 0;
+controls.addEventListener("start", () => { idle = 0; });
+function animate() {
+  requestAnimationFrame(animate);
+  idle += 1;
+  if (idle > 60) mesh.rotation.y += 0.0025;
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

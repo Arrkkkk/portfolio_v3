@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Approach B — Upgraded procedural</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0e0e0e; overflow: hidden; }
+  canvas { display: block; }
+  #label {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    font: 12px/1.4 ui-monospace, "JetBrains Mono", monospace;
+    color: #f2f2f2; text-transform: uppercase; letter-spacing: 0.04em;
+    background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 4px;
+    max-width: 360px;
+  }
+  #label b { font-weight: 600; }
+  #label span { color: #aaa; }
+</style>
+</head>
+<body>
+<div id="label">
+  <b>Approach B — Upgraded procedural</b><br/>
+  <span>No external assets — everything generated at runtime (cellular-noise grain,
+  decorrelated bump, carved-edge monogram). Drag to rotate, scroll to zoom.
+  Auto-rotates when idle.</span>
+</div>
+
+<script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 6.4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.NeutralToneMapping;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+const key = new THREE.DirectionalLight(0xe8ecff, 1.5);
+key.position.set(-5, 6, 5);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xb9a695, 0.5);
+fill.position.set(4, -2, 3);
+scene.add(fill);
+
+/* ---------- noise toolkit (same fbm the project already has, plus two new layers) ---------- */
+
+const hash = (x, y) => {
+  const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return n - Math.floor(n);
+};
+const smooth = (t) => t * t * (3 - 2 * t);
+const noise2 = (x, y) => {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = smooth(x - xi), yf = smooth(y - yi);
+  const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+  return a + (b - a) * xf + (c - a) * yf + (a - b - c + d) * xf * yf;
+};
+const fbm = (x, y, octaves = 5) => {
+  let v = 0, amp = 0.5, freq = 1;
+  for (let i = 0; i < octaves; i++) { v += noise2(x * freq, y * freq) * amp; freq *= 2; amp *= 0.5; }
+  return v;
+};
+
+/*
+ * Worley/cellular noise — distance to the nearest of a jittered grid of
+ * feature points. This is what the original procedural pass was missing
+ * entirely: fbm is smooth and continuous everywhere by construction, so
+ * no amount of octaves makes it look like discrete grains. Cellular
+ * noise gives actual cell-like facets with HARD boundaries between them,
+ * which is what a close-up photo of broken rock grain looks like.
+ */
+function worley(x, y, cellSize) {
+  const cx = Math.floor(x / cellSize), cy = Math.floor(y / cellSize);
+  let minD = 999;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const gx = cx + ox, gy = cy + oy;
+      const fx = (gx + hash(gx, gy)) * cellSize;
+      const fy = (gy + hash(gx + 91, gy + 7)) * cellSize;
+      const d = Math.hypot(x - fx, y - fy);
+      if (d < minD) minD = d;
+    }
+  }
+  return Math.min(1, minD / cellSize);
+}
+
+/*
+ * Generates the stone surface. Colour and bump are driven by
+ * DIFFERENT noise calls (different frequencies and offsets) rather than
+ * the same `v` reused for both — real rock grain and real rock albedo
+ * only loosely correlate; feeding one noise sample into both channels is
+ * part of why the old version read as "a lit gradient" instead of
+ * "a textured surface".
+ */
+function createStoneTextures(size = 1024) {
+  const make = () => {
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    return { c, ctx: c.getContext("2d") };
+  };
+  const colour = make();
+  const bump = make();
+  const img = colour.ctx.createImageData(size, size);
+  const bimg = bump.ctx.createImageData(size, size);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+
+      // ---- colour channel ----
+      const shape = fbm(x / 48 + 11, y / 48 + 7, 4); // broad lumps
+      const cellsC = worley(x + 300, y + 300, 10); // fine grain, own offset
+      const speck = fbm(x / 3 + 500, y / 3 + 500, 2); // sub-grain speckle
+      const v = Math.max(0, Math.min(1, shape * 0.55 + (1 - cellsC) * 0.3 + speck * 0.15));
+      const base = 10 + v * 46;
+      const warm = Math.max(0, x / size + (1 - y / size) - 1.3) * 170 * v;
+      img.data[i] = base + warm;
+      img.data[i + 1] = base + warm * 0.76;
+      img.data[i + 2] = base + warm * 0.58;
+      img.data[i + 3] = 255;
+
+      // ---- bump channel: independent noise, higher frequency, harder contrast ----
+      const bShape = fbm(x / 40 - 23, y / 40 + 41, 4);
+      const cellsB = worley(x - 150, y + 650, 7);
+      const fineGrit = fbm(x / 2.2 - 900, y / 2.2 + 900, 2);
+      let b = bShape * 0.45 + (1 - cellsB) * 0.4 + fineGrit * 0.15;
+      b = Math.pow(Math.max(0, Math.min(1, b)), 0.8) * 255; // push contrast, favour bright facets
+      bimg.data[i] = bimg.data[i + 1] = bimg.data[i + 2] = b;
+      bimg.data[i + 3] = 255;
+    }
+  }
+  colour.ctx.putImageData(img, 0, 0);
+  bump.ctx.putImageData(bimg, 0, 0);
+
+  /*
+   * Carved engraving: draw the glyph once, then blur its alpha so the
+   * depth falls off softly at the edges (a real gouge has a shadowed
+   * wall, not a hard binary cliff) before using it as a bump layer —
+   * fed in ADDITIVELY on its own pass, not baked into the same `v` the
+   * rest of the surface used, so it reads as "carved into" rather than
+   * "stamped on top of" the grain.
+   */
+  const glyph = document.createElement("canvas");
+  glyph.width = glyph.height = size;
+  const gctx = glyph.getContext("2d");
+  // Black, not white: bumpMap convention is brighter=higher/darker=lower,
+  // so an ENGRAVING (recessed, not embossed) has to darken this region,
+  // not lighten it — drawing it white here was backwards and would have
+  // read as a raised seal, not a carved mark.
+  gctx.fillStyle = "#000";
+  gctx.font = `600 ${size * 0.34}px system-ui, sans-serif`;
+  gctx.textAlign = "center";
+  gctx.textBaseline = "middle";
+  gctx.fillText("RA", size / 2, size / 2);
+  gctx.filter = `blur(${size * 0.01}px)`;
+  gctx.drawImage(glyph, 0, 0);
+
+  bump.ctx.save();
+  bump.ctx.globalCompositeOperation = "source-over";
+  bump.ctx.globalAlpha = 0.8;
+  bump.ctx.filter = `blur(${size * 0.004}px)`;
+  bump.ctx.drawImage(glyph, 0, 0);
+  bump.ctx.restore();
+
+  colour.ctx.save();
+  colour.ctx.globalCompositeOperation = "multiply";
+  colour.ctx.globalAlpha = 0.3;
+  colour.ctx.fillStyle = "#000";
+  colour.ctx.filter = `blur(${size * 0.003}px)`;
+  colour.ctx.drawImage(glyph, 0, 0);
+  colour.ctx.restore();
+
+  const toTexture = (canvas) => {
+    const t = new THREE.CanvasTexture(canvas);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 4;
+    return t;
+  };
+  return { map: toTexture(colour.c), bumpMap: toTexture(bump.c) };
+}
+
+const textures = createStoneTextures(1024);
+
+const material = new THREE.MeshStandardMaterial({
+  map: textures.map,
+  bumpMap: textures.bumpMap,
+  bumpScale: 1.4, // higher than the original 0.9 — the new bump has real high-frequency content to show
+  roughness: 0.95,
+  metalness: 0.02,
+});
+
+/* Same subdivided-box + vertex-noise chip as approach A, for a fair comparison. */
+const geometry = new THREE.BoxGeometry(2.9, 3.0, 0.6, 10, 10, 3);
+const pos = geometry.attributes.position;
+const seeded = (x, y, z) => {
+  const n = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+  return n - Math.floor(n);
+};
+for (let i = 0; i < pos.count; i++) {
+  const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+  const n = seeded(x * 3, y * 3, z * 3) - 0.5;
+  const nx = geometry.attributes.normal.getX(i);
+  const ny = geometry.attributes.normal.getY(i);
+  const nz = geometry.attributes.normal.getZ(i);
+  const amt = 0.05 * n;
+  pos.setXYZ(i, x + nx * amt, y + ny * amt, z + nz * amt);
+}
+geometry.computeVertexNormals();
+
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3;
+controls.maxDistance = 14;
+
+let idle = 0;
+controls.addEventListener("start", () => { idle = 0; });
+function animate() {
+  requestAnimationFrame(animate);
+  idle += 1;
+  if (idle > 60) mesh.rotation.y += 0.0025;
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

@@ -306,6 +306,27 @@ export function ServicesScene() {
         className="svc-stage sticky top-0 flex h-svh flex-col overflow-hidden bg-white text-ink"
       >
         <div className="svc-canvas pointer-events-none absolute inset-0 opacity-0">
+          {/*
+            Behind the monolith only — not instead of the smoke, and not
+            touching anything outside this pinned scene. Shares this div's
+            own opacity scrub (GSAP fades `.svc-canvas` in as the background
+            flips white→dark), so it appears on the same cue the smoke does.
+            z-[-1] keeps it below MonolithScene's <canvas> (static-flow,
+            renders above a negative-z sibling in this stacking context)
+            regardless of DOM order. Gated behind sceneOn/reduced exactly
+            like the monolith canvas beside it.
+          */}
+          {sceneOn && !reduced ? (
+            <video
+              className="pointer-events-none absolute inset-0 z-[-1] h-full w-full object-cover opacity-60"
+              src="/videos/services-bg.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              aria-hidden
+            />
+          ) : null}
           {sceneOn ? <MonolithScene progress={progress} /> : null}
         </div>
 

@@ -190,25 +190,32 @@ export function ServicesScene() {
           </div>
         </div>
 
-        {/* Service label pairs — diagonal, top-left + bottom-right */}
+        {/*
+          Service label pairs — diagonal, alternating corners per pair so
+          consecutive pairs read as a contrast rather than the same layout
+          repeating three times: pair 0 is first-label top-left / second
+          bottom-right, pair 1 flips to first-label bottom-left / second
+          top-right, pair 2 flips back. `i % 2 === 0` picks the corner set;
+          only which corner each label sits in changes, not the geometry
+          itself (same left-13%/65% and top-128px/bottom-110px anchors
+          already measured for the TL+BR case).
+        */}
         <div className="pointer-events-none absolute inset-0 z-[8] page-x">
-          {pairs.map((pair, i) => (
-            <div
-              key={i}
-              className="absolute inset-0 page-x transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)]"
-              style={{ opacity: activePair === i ? 1 : 0 }}
-            >
-              {pair[0] ? (
-                <ServiceCallout service={pair[0]} className="absolute left-[13%] top-[128px]" />
-              ) : null}
-              {pair[1] ? (
-                <ServiceCallout
-                  service={pair[1]}
-                  className="absolute left-[65%] bottom-[110px]"
-                />
-              ) : null}
-            </div>
-          ))}
+          {pairs.map((pair, i) => {
+            const straight = i % 2 === 0;
+            const firstCorner = straight ? "absolute left-[13%] top-[128px]" : "absolute left-[13%] bottom-[110px]";
+            const secondCorner = straight ? "absolute left-[65%] bottom-[110px]" : "absolute left-[65%] top-[128px]";
+            return (
+              <div
+                key={i}
+                className="absolute inset-0 page-x transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)]"
+                style={{ opacity: activePair === i ? 1 : 0 }}
+              >
+                {pair[0] ? <ServiceCallout service={pair[0]} className={firstCorner} /> : null}
+                {pair[1] ? <ServiceCallout service={pair[1]} className={secondCorner} /> : null}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

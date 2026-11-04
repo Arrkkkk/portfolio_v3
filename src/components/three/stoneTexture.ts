@@ -42,17 +42,100 @@ function loadMap(loader: THREE.TextureLoader, path: string, srgb: boolean) {
 }
 
 /**
- * Generates the stone surface for the services monolith. No engraving —
- * removed on request; the monolith is now the plain real-scanned rock with
- * nothing composited onto it. All four maps load the same simple way now
- * that nothing needs runtime canvas compositing.
+ * Generates the stone surface for the services monolith, with the portfolio
+ * monogram engraved into its face — an original mark, not the reference's.
+ * The engraving is sized relative to each loaded image's own resolution,
+ * not a caller-supplied size — the real scan dictates that now.
  */
-export function createStoneTextures() {
+export function createStoneTextures(monogram = "RA") {
   const loader = new THREE.TextureLoader();
-  const map = loadMap(loader, STONE_DIFFUSE, true);
   const normalMap = loadMap(loader, STONE_NORMAL, false);
   const roughnessMap = loadMap(loader, STONE_ROUGHNESS, false);
-  const bumpMap = loadMap(loader, STONE_DISPLACEMENT, false);
+
+  /*
+   * map (diffuse) is NOT loaded via TextureLoader like the two above —
+   * it has to go through the same Image+canvas path as bumpMap below so
+   * the engraving can be composited onto it. Loading it both ways (an
+   * independent TextureLoader fetch AND this canvas path) would race:
+   * whichever finished last would overwrite the other's `.image`, and if
+   * the plain load won, it would silently erase the engraving with no
+   * visible error.
+   */
+  const map = new THREE.Texture();
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(REPEAT, REPEAT);
+  map.colorSpace = THREE.SRGBColorSpace;
+
+  /*
+   * The engraving still has to be generated at runtime, not pre-baked
+   * into the displacement photo on disk — it has to track `monogram`
+   * (site.monogram), which is owner-configurable data, not a fixed asset.
+   * Composited onto the REAL displacement map rather than a from-scratch
+   * canvas, so the surrounding bump detail is still the photographed rock,
+   * not a flat field with a mark floating on it.
+   *
+   * bumpMap convention is brighter = higher/raised, darker = lower/
+   * recessed — an ENGRAVING has to darken this region, not lighten it, or
+   * it reads as a raised seal instead of a carved mark. Blurred edge
+   * (not a hard cut) so the depth falls off like a real gouge wall would,
+   * rather than a binary cliff.
+   */
+  const bumpMap = new THREE.CanvasTexture(document.createElement("canvas"));
+  bumpMap.wrapS = bumpMap.wrapT = THREE.RepeatWrapping;
+  bumpMap.repeat.set(REPEAT, REPEAT);
+
+  const dispImg = new Image();
+  dispImg.crossOrigin = "anonymous";
+  dispImg.onload = () => {
+    const texSize = dispImg.width;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = texSize;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(dispImg, 0, 0, texSize, texSize);
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = "#000";
+    ctx.font = `600 ${texSize * 0.34}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.filter = `blur(${texSize * 0.004}px)`;
+    ctx.fillText(monogram, texSize / 2, texSize / 2);
+    ctx.restore();
+    bumpMap.image = canvas;
+    bumpMap.needsUpdate = true;
+  };
+  dispImg.src = STONE_DISPLACEMENT;
+
+  /*
+   * Engrave the colour map too (a faint shadow on top of the real grain,
+   * not the engraving's main depth cue — the bump map above carries that)
+   * so the mark reads correctly even at angles/lighting where the bump
+   * perturbation alone is subtle.
+   */
+  const diffImg = new Image();
+  diffImg.crossOrigin = "anonymous";
+  diffImg.onload = () => {
+    const texSize = diffImg.width;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = texSize;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(diffImg, 0, 0, texSize, texSize);
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = "#000";
+    ctx.font = `600 ${texSize * 0.34}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.filter = `blur(${texSize * 0.003}px)`;
+    ctx.fillText(monogram, texSize / 2, texSize / 2);
+    ctx.restore();
+    map.image = canvas;
+    map.needsUpdate = true;
+  };
+  diffImg.src = STONE_DIFFUSE;
+
   return { map, normalMap, roughnessMap, bumpMap };
 }
 

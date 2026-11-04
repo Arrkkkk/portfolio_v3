@@ -5,6 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { createSmokeTexture, createStoneTextures } from "./stoneTexture";
 import { seeded, SERVICES_P1_P4_SCALE } from "@/lib/utils";
+import { site } from "@/data/site";
 
 /**
  * A10 P2–P5 — the stone monolith in volumetric smoke.
@@ -25,7 +26,7 @@ import { seeded, SERVICES_P1_P4_SCALE } from "@/lib/utils";
  */
 function Monolith({ progress }: { progress: React.RefObject<number> }) {
   const mesh = useRef<THREE.Mesh>(null);
-  const textures = useMemo(() => createStoneTextures(), []);
+  const textures = useMemo(() => createStoneTextures(site.monogram), []);
 
   /*
    * A subdivided box (not the bare 1-segment default) with each vertex

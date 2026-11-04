@@ -26,14 +26,43 @@ import { site } from "@/data/site";
  */
 function Monolith({ progress }: { progress: React.RefObject<number> }) {
   const mesh = useRef<THREE.Mesh>(null);
-  const textures = useMemo(() => createStoneTextures(512, site.monogram), []);
+  const textures = useMemo(() => createStoneTextures(site.monogram), []);
+
+  /*
+   * A subdivided box (not the bare 1-segment default) with each vertex
+   * nudged along its own normal by a little deterministic noise — gives
+   * the silhouette a slightly broken, non-mechanical edge instead of a
+   * perfect machined bevel, closer to how the real scanned material's own
+   * chipped/cracked/uneven edges (see stoneTexture.ts) read. `seeded` is
+   * the project's own deterministic hash (lib/utils), same one already
+   * used for the scatter/smoke placement, so this geometry is identical
+   * on every load rather than shifting on each client re-render.
+   */
+  const geometry = useMemo(() => {
+    const geo = new THREE.BoxGeometry(2.9, 3.0, 0.6, 10, 10, 3);
+    const pos = geo.attributes.position;
+    const normal = geo.attributes.normal;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const n = seeded(x * 300 + y * 700 + z * 1300) - 0.5;
+      const amt = 0.05 * n;
+      pos.setXYZ(i, x + normal.getX(i) * amt, y + normal.getY(i) * amt, z + normal.getZ(i) * amt);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }, []);
 
   useEffect(
     () => () => {
       textures.map.dispose();
+      textures.normalMap.dispose();
+      textures.roughnessMap.dispose();
       textures.bumpMap.dispose();
+      geometry.dispose();
     },
-    [textures],
+    [textures, geometry],
   );
 
   useFrame((state) => {
@@ -60,14 +89,20 @@ function Monolith({ progress }: { progress: React.RefObject<number> }) {
   });
 
   return (
-    <mesh ref={mesh}>
-      <boxGeometry args={[2.9, 3.0, 0.6]} />
+    <mesh ref={mesh} geometry={geometry}>
       <meshStandardMaterial
         map={textures.map}
+        normalMap={textures.normalMap}
+        normalScale={new THREE.Vector2(1.1, 1.1)}
+        roughnessMap={textures.roughnessMap}
+        roughness={0.92}
         bumpMap={textures.bumpMap}
-        bumpScale={0.9}
-        roughness={0.95}
+        bumpScale={0.07}
         metalness={0.02}
+        // Neutral mid-grey (R=G=B) — the real scan's own desaturated
+        // diffuse (stoneTexture.ts) already removed the warm cast, this
+        // just sets the overall tone per the owner's reference images.
+        color={new THREE.Color(0x6e6e6e)}
         transparent
       />
     </mesh>

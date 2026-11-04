@@ -171,10 +171,10 @@ export function ServicesScene() {
       const OVERLAP_FACTOR = 0.575; // 0.5 baseline + 15%
       const SVH_STAGGER = SVH_DURATION * OVERLAP_FACTOR;
       // SERVICES_SVH_P1_P4 + 2 staggers + one full duration = SERVICES_SVH_TOTAL
-      // (200 + 575 + 500 = 1275) — both constants live in lib/utils.ts
+      // (320 + 575 + 500 = 1395) — both constants live in lib/utils.ts
       // alongside the scale MonolithScene also depends on; if SVH_DURATION
       // or OVERLAP_FACTOR change, SERVICES_SVH_TOTAL there must too, and
-      // so must the literal h-[1275svh] in the JSX below (Tailwind needs
+      // so must the literal h-[1395svh] in the JSX below (Tailwind needs
       // that class spelled out, not built from a variable).
       const pairStart = (i: number) => (SERVICES_SVH_P1_P4 + i * SVH_STAGGER) / SERVICES_SVH_TOTAL;
       const duration = SVH_DURATION / SERVICES_SVH_TOTAL;
@@ -289,15 +289,17 @@ export function ServicesScene() {
   }, [reduced, pairs.length]);
 
   return (
-    // h-[1275svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
+    // h-[1395svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
     // needs the class spelled out literally, so this can't read the
-    // constant directly. The "light" marker's 40svh is untouched: it
-    // marks the same absolute point (P2's luminance flip) as before,
-    // which SERVICES_P1_P4_SCALE keeps fixed; only the "dark" marker's
-    // height changes, to cover the rest of the now-taller section.
-    <div ref={section} className="relative h-[1275svh]">
-      <ChapterMarker className="absolute left-0 top-0 h-[40svh] w-px" theme="light" />
-      <ChapterMarker className="absolute left-0 top-[40svh] h-[1235svh] w-px" theme="dark" />
+    // constant directly. The "light" marker's height marks the luminance
+    // flip's absolute position, which is 0.2 * SERVICES_SVH_P1_P4 (= 64svh
+    // now that P1-P4 itself is 320svh, not just the 40svh it was at
+    // 200svh) — it moves whenever SERVICES_SVH_P1_P4 does, unlike when
+    // only SERVICES_SVH_TOTAL grew around a fixed P1-P4. The "dark"
+    // marker covers the rest of the section from there.
+    <div ref={section} className="relative h-[1395svh]">
+      <ChapterMarker className="absolute left-0 top-0 h-[64svh] w-px" theme="light" />
+      <ChapterMarker className="absolute left-0 top-[64svh] h-[1331svh] w-px" theme="dark" />
 
       <div
         ref={stage}

@@ -167,7 +167,7 @@ Phases, with frame ranges:
 | P2 darken | 131–139 | Background crossfades `#FFFFFF → #0E0E0E`; volumetric smoke fades in; the type inverts to white; a stone boulder drops from the top and grows. |
 | P3 shatter | 140–150 | The boulder rotates and collides with the type; glyphs detach, tumble as rigid bodies with rotation, and fall out of frame (frames 148–150 show letters scattered mid-air, e.g. `D D S E G / E R O E M N`). |
 | P4 settle | 150–157 | Debris clears; the boulder resolves into a static square monolith (~578 × 590) with the monogram embossed into its face, centred. |
-| P5 labels | 157–177 | Six ServiceLabels cross-fade in **diagonal pairs** (top-left + bottom-right), one pair at a time, each with a 24 px line-art icon that draws in. Smoke keeps drifting. |
+| P5 labels | 157–177 | Six ServiceLabels rise in **diagonal pairs, always bottom-left + top-right** (re-checked directly against trionn.com — not top-left/bottom-right, and not alternating), one pair at a time: each pair travels up into its resting corners, holds, then keeps rising on out as the next pair rises in under it — not a cross-fade in place. Each label has a line-art icon. Smoke keeps drifting. |
 | P6 exit | 178–181 | The whole scene unpins and the Client-stories chapter scrolls over it. |
 
 **Properties** background-color, canvas uniforms (smoke density, camera), per-glyph rigid-body

@@ -143,9 +143,14 @@ Stage: the kinetic type stack, then a stone monolith (~578 × 590, embossed mono
 smoke, then the ServiceLabel pairs. Background animates `#FFFFFF → #0E0E0E` across the scene.
 
 ## 18. ServiceLabel
-A 2-line 30 px title + a 3-line 14 px description (~250 px wide) + a 24 px line-art icon offset to the
-side of the title. Appears in **diagonal pairs**: one at top-left (x 223, y 128) and one at
-bottom-right (x 1115, y 640), then cross-fades to the next pair. Six labels total:
+A 2-line 30 px title + a 3-line 14 px description (~250 px wide) + a line-art icon offset to the side
+of the title, inside a **frosted-glass card** (dark translucent panel, backdrop-blur — the monolith is
+visibly soft-blurred through it where it passes behind). Appears in **diagonal pairs, always at the
+same two corners**: bottom-left and top-right — not alternating, and not top-left/bottom-right; the
+2fps frame recording under-sampled this and the original note here was wrong, corrected against a
+direct capture of trionn.com. A pair doesn't cross-fade in place: it rises up into its resting corners
+(`y: 40 → 0`), holds, then keeps rising on out (`y: 0 → -40`) as the next pair rises in under it — one
+continuous upward procession, not three independent fades. Six labels total:
 AI & Intelligent Automation · Website & Mobile Design · Web Development · WordPress Development ·
 Product Design · Branding.
 

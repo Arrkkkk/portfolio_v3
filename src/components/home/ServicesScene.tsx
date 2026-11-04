@@ -34,7 +34,6 @@ export function ServicesScene() {
   const stage = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
   const [captionB, setCaptionB] = useState(false);
-  const [activePair, setActivePair] = useState(-1);
   const reduced = useReducedMotion();
   const sceneOn = useSceneEnabled();
 
@@ -66,8 +65,6 @@ export function ServicesScene() {
             const p = self.progress;
             progress.current = p;
             setCaptionB(p > 0.42);
-            // P5 — one diagonal pair at a time across the back half of the scene.
-            setActivePair(p < 0.5 ? -1 : Math.min(2, Math.floor((p - 0.5) / 0.165)));
           },
         },
       });
@@ -112,6 +109,40 @@ export function ServicesScene() {
         },
         0.3,
       );
+
+      /*
+       * P5 — each pair rises up into its resting corners, holds, then keeps
+       * rising on out as the next pair rises in under it. Re-captured
+       * directly off trionn.com (frames here, not in the 2fps recording,
+       * undersold it as a plain cross-fade): a pair doesn't fade in place,
+       * it travels — up from `y: 40` to `0` on the way in, straight on
+       * through to `y: -40` on the way out, so consecutive pairs read as
+       * one continuous upward procession rather than three unrelated
+       * fades. Three 0.165-wide windows starting at 0.5, matching the
+       * three pairs; the middle 60% of each window is an implicit hold
+       * (no tween touches it, so it just sits at the previous tween's end
+       * value) and the first/last 20% are the rise in/out.
+       */
+      const PAIR_START = 0.5;
+      const PAIR_WINDOW = 0.165;
+      const PAIR_EDGE = PAIR_WINDOW * 0.2;
+      // Always 3 — six services in diagonal pairs, same assumption the
+      // window math above already makes. Looping a fixed count rather
+      // than `pairs.forEach` keeps `pairs` (a fresh array every render)
+      // out of this effect's dependencies.
+      for (let i = 0; i < 3; i++) {
+        const windowStart = PAIR_START + i * PAIR_WINDOW;
+        tl.fromTo(
+          `.svc-pair-${i}`,
+          { y: 40, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: PAIR_EDGE },
+          windowStart,
+        ).to(
+          `.svc-pair-${i}`,
+          { y: -40, autoAlpha: 0, duration: PAIR_EDGE },
+          windowStart + PAIR_WINDOW - PAIR_EDGE,
+        );
+      }
 
       st = tl.scrollTrigger;
     }, sec);
@@ -191,31 +222,34 @@ export function ServicesScene() {
         </div>
 
         {/*
-          Service label pairs — diagonal, alternating corners per pair so
-          consecutive pairs read as a contrast rather than the same layout
-          repeating three times: pair 0 is first-label top-left / second
-          bottom-right, pair 1 flips to first-label bottom-left / second
-          top-right, pair 2 flips back. `i % 2 === 0` picks the corner set;
-          only which corner each label sits in changes, not the geometry
-          itself (same left-13%/65% and top-128px/bottom-110px anchors
-          already measured for the TL+BR case).
+          Service label pairs — every pair uses the SAME two corners,
+          bottom-left then top-right (re-checked directly against
+          trionn.com: all three pairs land there, not an alternating
+          diagonal — COMPONENTS.md's "top-left + bottom-right" note was
+          wrong, read off too few of the 2fps frames to catch it). The
+          rise/hold/rise-out motion is GSAP-driven on `.svc-pair-${i}`
+          above, not React state, so opacity starts at 0 inline (not a
+          Tailwind class) as the pre-JS/reduced-motion default — matches
+          the old activePair=-1 default of "nothing shown until animated
+          in" rather than flashing all three stacked at full opacity.
         */}
         <div className="pointer-events-none absolute inset-0 z-[8] page-x">
-          {pairs.map((pair, i) => {
-            const straight = i % 2 === 0;
-            const firstCorner = straight ? "absolute left-[13%] top-[128px]" : "absolute left-[13%] bottom-[110px]";
-            const secondCorner = straight ? "absolute left-[65%] bottom-[110px]" : "absolute left-[65%] top-[128px]";
-            return (
-              <div
-                key={i}
-                className="absolute inset-0 page-x transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)]"
-                style={{ opacity: activePair === i ? 1 : 0 }}
-              >
-                {pair[0] ? <ServiceCallout service={pair[0]} className={firstCorner} /> : null}
-                {pair[1] ? <ServiceCallout service={pair[1]} className={secondCorner} /> : null}
-              </div>
-            );
-          })}
+          {pairs.map((pair, i) => (
+            <div key={i} className={`svc-pair-${i} absolute inset-0 page-x`} style={{ opacity: 0 }}>
+              {pair[0] ? (
+                <ServiceCallout
+                  service={pair[0]}
+                  className="absolute bottom-[110px] left-0 sm:left-[13%]"
+                />
+              ) : null}
+              {pair[1] ? (
+                <ServiceCallout
+                  service={pair[1]}
+                  className="absolute right-0 top-[128px] sm:right-auto sm:left-[65%]"
+                />
+              ) : null}
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -230,7 +264,17 @@ function ServiceCallout({
   className?: string;
 }) {
   return (
-    <div className={`max-w-[260px] text-text-hi ${className ?? ""}`}>
+    /*
+     * Frosted-glass card, not bare floating text — on trionn.com the
+     * monolith is visibly soft-blurred through the panel wherever it
+     * passes behind one. bg-black/45 + backdrop-blur-md is what gives
+     * that; rounded-panel (6px, DESIGN-SYSTEM's own panel radius) keeps
+     * the corner barely-there, matching the reference rather than a
+     * rounder "card" radius.
+     */
+    <div
+      className={`max-w-[80vw] rounded-panel bg-black/45 p-8 text-text-hi backdrop-blur-md sm:max-w-[320px] ${className ?? ""}`}
+    >
       <div className="flex items-start gap-6">
         <h3 className="text-title-md tracking-[-0.01em]">
           {service.lines[0]}
@@ -241,11 +285,9 @@ function ServiceCallout({
             </>
           ) : null}
         </h3>
-        <ServiceIcon name={service.icon} className="mt-1 shrink-0 opacity-70" />
+        <ServiceIcon name={service.icon} className="mt-1 h-12 w-12 shrink-0 opacity-70" />
       </div>
-      <p className="mt-[104px] text-[14px] leading-[1.3] text-text-mid">
-        {service.description}
-      </p>
+      <p className="mt-6 text-[14px] leading-[1.3] text-text-mid">{service.description}</p>
     </div>
   );
 }

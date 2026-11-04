@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { createSmokeTexture, createStoneTextures } from "./stoneTexture";
-import { seeded } from "@/lib/utils";
+import { seeded, SERVICES_P1_P4_SCALE } from "@/lib/utils";
 import { site } from "@/data/site";
 
 /**
@@ -13,6 +13,16 @@ import { site } from "@/data/site";
  * `progress` is the pinned scene's scrubbed 0…1 value: the boulder drops in and
  * tumbles through the first third, settles square-on by ~0.45, then holds while
  * the service labels cycle. Smoke fades up with the background darkening.
+ *
+ * The 0.45 above is in ServicesScene's ORIGINAL 0.5-of-400svh P1–P4 scale.
+ * ServicesScene's own section has since grown (to give the P5 label cards
+ * room to be scroll-scrubbed instead of snapping through in a few px), and
+ * P1–P4 now occupies a smaller fraction of that taller whole — same
+ * absolute scroll distance, different fraction. `progress` is that same
+ * fraction-of-the-whole number, so this threshold has to shrink by the
+ * same SERVICES_P1_P4_SCALE factor ServicesScene applies to its own P1–P4
+ * keyframes, or the settle would still be reaching for 0.45 long after P5
+ * has already started.
  */
 function Monolith({ progress }: { progress: React.RefObject<number> }) {
   const mesh = useRef<THREE.Mesh>(null);
@@ -31,7 +41,11 @@ function Monolith({ progress }: { progress: React.RefObject<number> }) {
     if (!m) return;
     const p = progress.current ?? 0;
     // P2 drop → P3 tumble → P4 settle
-    const settle = THREE.MathUtils.clamp((p - 0.12) / 0.33, 0, 1);
+    const settle = THREE.MathUtils.clamp(
+      (p - 0.12 * SERVICES_P1_P4_SCALE) / (0.33 * SERVICES_P1_P4_SCALE),
+      0,
+      1,
+    );
     const eased = 1 - Math.pow(1 - settle, 3);
 
     m.position.y = THREE.MathUtils.lerp(4.6, 0, eased);

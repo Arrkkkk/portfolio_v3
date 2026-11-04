@@ -1,6 +1,25 @@
 export const cn = (...parts: Array<string | false | null | undefined>) =>
   parts.filter(Boolean).join(" ");
 
+/*
+ * ServicesScene's pinned section used to be flat 400svh, split evenly:
+ * P1-P4 (type stack / luminance flip / scatter / monolith settle) in the
+ * first half, P5 (service-label cards) in the second. P5 needed far more
+ * scroll distance to feel scroll-driven rather than snapping through in a
+ * few px, so the section grew to SERVICES_SVH_TOTAL — but P1-P4 keep their
+ * original ABSOLUTE scroll distance (SERVICES_SVH_P1_P4, unchanged at
+ * 200svh) rather than also stretching, so none of that timing changes.
+ * SERVICES_P1_P4_SCALE is how much every P1-P4 keyframe fraction (written
+ * against the old 400svh / 0.5 split) must be multiplied by to land on the
+ * same absolute svh in the new, taller section. Both ServicesScene.tsx
+ * (the GSAP keyframe positions) and MonolithScene.tsx (the monolith's own
+ * settle-progress thresholds, which read the same 0-1 `progress`) depend
+ * on this scale — defined once here so they can't drift apart.
+ */
+export const SERVICES_SVH_P1_P4 = 200;
+export const SERVICES_SVH_TOTAL = 1100;
+export const SERVICES_P1_P4_SCALE = SERVICES_SVH_P1_P4 / SERVICES_SVH_TOTAL / 0.5;
+
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export const clamp = (v: number, min: number, max: number) =>

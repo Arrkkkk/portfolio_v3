@@ -10,7 +10,7 @@ import { StarCaption } from "@/components/primitives/Rule";
 import { ServiceIcon } from "@/components/expertise/ServiceIcon";
 import { useSceneEnabled } from "@/components/three/SceneGate";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { seeded } from "@/lib/utils";
+import { seeded, SERVICES_P1_P4_SCALE, SERVICES_SVH_P1_P4, SERVICES_SVH_TOTAL } from "@/lib/utils";
 import { services, servicesScene } from "@/data/services";
 
 const MonolithScene = dynamic(
@@ -64,7 +64,7 @@ export function ServicesScene() {
           onUpdate: (self) => {
             const p = self.progress;
             progress.current = p;
-            setCaptionB(p > 0.42);
+            setCaptionB(p > 0.42 * SERVICES_P1_P4_SCALE);
           },
         },
       });
@@ -74,13 +74,22 @@ export function ServicesScene() {
       tl.to({}, { duration: 1 }, 0);
 
       // P1 — the stack settles and grows slightly.
-      tl.fromTo(".svc-stack", { scale: 0.94, y: 60 }, { scale: 1.12, y: 0, duration: 0.3 }, 0);
+      tl.fromTo(
+        ".svc-stack",
+        { scale: 0.94, y: 60 },
+        { scale: 1.12, y: 0, duration: 0.3 * SERVICES_P1_P4_SCALE },
+        0,
+      );
 
       // P2 — luminance flip.
-      tl.to(".svc-stage", { backgroundColor: "#0e0e0e", duration: 0.14 }, 0.1)
-        .to(".svc-stack", { color: "#f2f2f2", duration: 0.12 }, 0.12)
-        .to(".svc-canvas", { opacity: 1, duration: 0.14 }, 0.1)
-        .to(".svc-chrome", { color: "#f2f2f2", duration: 0.12 }, 0.12);
+      tl.to(
+        ".svc-stage",
+        { backgroundColor: "#0e0e0e", duration: 0.14 * SERVICES_P1_P4_SCALE },
+        0.1 * SERVICES_P1_P4_SCALE,
+      )
+        .to(".svc-stack", { color: "#f2f2f2", duration: 0.12 * SERVICES_P1_P4_SCALE }, 0.12 * SERVICES_P1_P4_SCALE)
+        .to(".svc-canvas", { opacity: 1, duration: 0.14 * SERVICES_P1_P4_SCALE }, 0.1 * SERVICES_P1_P4_SCALE)
+        .to(".svc-chrome", { color: "#f2f2f2", duration: 0.12 * SERVICES_P1_P4_SCALE }, 0.12 * SERVICES_P1_P4_SCALE);
 
       /*
        * P3 — glyphs detach as independent bodies and fall out of frame.
@@ -104,10 +113,16 @@ export function ServicesScene() {
           rotate: (i: number) => (seeded(i + 91) - 0.5) * 540,
           opacity: 0,
           ease: "power2.in",
-          duration: 0.14,
-          stagger: { each: 0.001, from: "random" },
+          duration: 0.14 * SERVICES_P1_P4_SCALE,
+          // `each` also needs the P1-P4 rescale: left alone, the ~29
+          // characters' staggered offsets (each a fraction of the WHOLE
+          // timeline, same as `duration`/position) would spread across
+          // more absolute scroll than before, since the whole timeline
+          // got longer — exactly the kind of drift P1-P4 is supposed to
+          // be immune to.
+          stagger: { each: 0.001 * SERVICES_P1_P4_SCALE, from: "random" },
         },
-        0.3,
+        0.3 * SERVICES_P1_P4_SCALE,
       );
 
       /*
@@ -123,23 +138,48 @@ export function ServicesScene() {
        * card's edge stays flush against the same side of the rock for the
        * whole glide instead of drifting away from it.
        *
-       * Corner-to-rest offsets are viewport-relative (not flat px, after
-       * the P3 scatter already taught this lesson once) so a card always
-       * starts off-screen, at any width. x/y here are added ON TOP of the
-       * CSS left/right/top/bottom anchors below — at rest (x:0, y:0) a
-       * card sits exactly at its measured resting position; the offsets
-       * only describe the extra travel before/after that.
+       * This used to be ~13svh for a whole flight (0.033 of the old
+       * 400svh section) — a tiny scroll nudge finished the entire
+       * corner-to-rock trip, so scrolling didn't feel like it was driving
+       * the motion at all. Also wrong per a direct re-check of
+       * trionn.com: a later pair starts flying in while the EARLIER
+       * pair is STILL FULLY SETTLED (mid-hold, not mid-exit) — four cards
+       * on screen together for a stretch, not strictly one pair at a
+       * time. Both fixed by growing the section itself (SVH constants
+       * below) rather than reallocating the existing 400svh: P1–P4 keep
+       * their original absolute scroll distance (via SERVICES_P1_P4_SCALE)
+       * so nothing about the rise/flip/scatter above changes, and ALL of
+       * the added height goes to P5. Each pair's own enter+hold+exit
+       * cycle is now 450svh by itself (vs. the ~26svh a whole pair used
+       * to get), and consecutive pairs START only 225svh apart — the
+       * midpoint of the PREVIOUS pair's own hold (enter 150 + half of a
+       * 150-long hold), not after it. An earlier version staggered by
+       * enter+hold exactly (250svh), which put the overlap entirely in
+       * the exit leg — the next pair only started once the previous one
+       * had ALREADY begun fading, never while it was genuinely settled.
        */
-      const PAIR_START = 0.5;
-      const PAIR_WINDOW = 0.165;
-      const PAIR_EDGE = PAIR_WINDOW * 0.2;
+      const SVH_ENTER = 150;
+      const SVH_HOLD = 150;
+      const SVH_EXIT = 150;
+      const SVH_STAGGER = 225; // ENTER + HOLD/2 — next pair starts mid-hold, not at exit
+      // SERVICES_SVH_P1_P4 + 2 staggers + one full cycle = SERVICES_SVH_TOTAL
+      // (200 + 500 + 400 = 1100) — both constants live in lib/utils.ts
+      // alongside the scale MonolithScene also depends on; if these svh
+      // numbers below ever change, SERVICES_SVH_TOTAL there must too, and
+      // so must the literal h-[1100svh] in the JSX below (Tailwind needs
+      // that class spelled out, not built from a variable).
+      const pairStart = (i: number) => (SERVICES_SVH_P1_P4 + i * SVH_STAGGER) / SERVICES_SVH_TOTAL;
+      const enterDur = SVH_ENTER / SERVICES_SVH_TOTAL;
+      const holdDur = SVH_HOLD / SERVICES_SVH_TOTAL;
+      const exitDur = SVH_EXIT / SERVICES_SVH_TOTAL;
+
       // Always 3 — six services in diagonal pairs, same assumption the
       // window math above already makes. Looping a fixed count rather
       // than `pairs.forEach` keeps `pairs` (a fresh array every render)
       // out of this effect's dependencies.
       for (let i = 0; i < 3; i++) {
-        const windowStart = PAIR_START + i * PAIR_WINDOW;
-        const exitStart = windowStart + PAIR_WINDOW - PAIR_EDGE;
+        const windowStart = pairStart(i);
+        const exitStart = windowStart + enterDur + holdDur;
 
         // First label: bottom-left corner -> rests on the rock's left side -> straight up and out.
         tl.fromTo(
@@ -149,11 +189,11 @@ export function ServicesScene() {
             y: () => window.innerHeight * 0.45,
             autoAlpha: 0,
           },
-          { x: 0, y: 0, autoAlpha: 1, duration: PAIR_EDGE },
+          { x: 0, y: 0, autoAlpha: 1, duration: enterDur },
           windowStart,
         ).to(
           `.svc-pair-${i}-a`,
-          { y: () => -window.innerHeight * 0.45, autoAlpha: 0, duration: PAIR_EDGE },
+          { y: () => -window.innerHeight * 0.45, autoAlpha: 0, duration: exitDur },
           exitStart,
         );
 
@@ -165,11 +205,11 @@ export function ServicesScene() {
             y: () => -window.innerHeight * 0.45,
             autoAlpha: 0,
           },
-          { x: 0, y: 0, autoAlpha: 1, duration: PAIR_EDGE },
+          { x: 0, y: 0, autoAlpha: 1, duration: enterDur },
           windowStart,
         ).to(
           `.svc-pair-${i}-b`,
-          { y: () => window.innerHeight * 0.45, autoAlpha: 0, duration: PAIR_EDGE },
+          { y: () => window.innerHeight * 0.45, autoAlpha: 0, duration: exitDur },
           exitStart,
         );
       }
@@ -206,9 +246,15 @@ export function ServicesScene() {
   }, [reduced, pairs.length]);
 
   return (
-    <div ref={section} className="relative h-[400svh]">
+    // h-[1100svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
+    // needs the class spelled out literally, so this can't read the
+    // constant directly. The "light" marker's 40svh is untouched: it
+    // marks the same absolute point (P2's luminance flip) as before,
+    // which SERVICES_P1_P4_SCALE keeps fixed; only the "dark" marker's
+    // height changes, to cover the rest of the now-taller section.
+    <div ref={section} className="relative h-[1100svh]">
       <ChapterMarker className="absolute left-0 top-0 h-[40svh] w-px" theme="light" />
-      <ChapterMarker className="absolute left-0 top-[40svh] h-[360svh] w-px" theme="dark" />
+      <ChapterMarker className="absolute left-0 top-[40svh] h-[1060svh] w-px" theme="dark" />
 
       <div
         ref={stage}

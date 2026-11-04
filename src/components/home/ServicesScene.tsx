@@ -160,19 +160,22 @@ export function ServicesScene() {
        * on screen while the next is already partway through its own
        * approach). Since x is ~settled and y is at its own rest point by
        * the midpoint of a card's duration, starting the next pair at
-       * HALF of the current pair's duration lands it right there.
-       * SVH_STAGGER is therefore exactly SVH_DURATION / 2, not an
-       * independently-tuned number — the overlap is structural, not a
-       * coincidence that needs re-tuning if SVH_DURATION ever changes.
+       * HALF of the current pair's duration lands it right there — that's
+       * the OVERLAP_FACTOR = 0.5 baseline. Bumped to 0.575 on request
+       * (+15%: "a bit more gap between consecutive [pairs of] cards" —
+       * less overlap, not a spatial gap) so the next pair starts a little
+       * later relative to the current one's journey, same structural
+       * link to SVH_DURATION either way.
        */
       const SVH_DURATION = 500;
-      const SVH_STAGGER = SVH_DURATION / 2; // next pair starts at the current pair's midpoint
+      const OVERLAP_FACTOR = 0.575; // 0.5 baseline + 15%
+      const SVH_STAGGER = SVH_DURATION * OVERLAP_FACTOR;
       // SERVICES_SVH_P1_P4 + 2 staggers + one full duration = SERVICES_SVH_TOTAL
-      // (200 + 500 + 500 = 1200) — both constants live in lib/utils.ts
+      // (200 + 575 + 500 = 1275) — both constants live in lib/utils.ts
       // alongside the scale MonolithScene also depends on; if SVH_DURATION
-      // changes, SERVICES_SVH_TOTAL there must too, and so must the
-      // literal h-[1200svh] in the JSX below (Tailwind needs that class
-      // spelled out, not built from a variable).
+      // or OVERLAP_FACTOR change, SERVICES_SVH_TOTAL there must too, and
+      // so must the literal h-[1275svh] in the JSX below (Tailwind needs
+      // that class spelled out, not built from a variable).
       const pairStart = (i: number) => (SERVICES_SVH_P1_P4 + i * SVH_STAGGER) / SERVICES_SVH_TOTAL;
       const duration = SVH_DURATION / SERVICES_SVH_TOTAL;
       // Fade in/out only — never the thing that makes a card feel like
@@ -253,15 +256,15 @@ export function ServicesScene() {
   }, [reduced, pairs.length]);
 
   return (
-    // h-[1200svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
+    // h-[1275svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
     // needs the class spelled out literally, so this can't read the
     // constant directly. The "light" marker's 40svh is untouched: it
     // marks the same absolute point (P2's luminance flip) as before,
     // which SERVICES_P1_P4_SCALE keeps fixed; only the "dark" marker's
     // height changes, to cover the rest of the now-taller section.
-    <div ref={section} className="relative h-[1200svh]">
+    <div ref={section} className="relative h-[1275svh]">
       <ChapterMarker className="absolute left-0 top-0 h-[40svh] w-px" theme="light" />
-      <ChapterMarker className="absolute left-0 top-[40svh] h-[1160svh] w-px" theme="dark" />
+      <ChapterMarker className="absolute left-0 top-[40svh] h-[1235svh] w-px" theme="dark" />
 
       <div
         ref={stage}

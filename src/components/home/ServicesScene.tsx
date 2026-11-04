@@ -184,6 +184,39 @@ export function ServicesScene() {
       // has settled.
       const fadeDur = duration * 0.1;
 
+      /*
+       * The card's rest x used to be a flat 0 against a left-180px/
+       * right-180px CSS anchor — correct-looking only at the exact
+       * 1710px reference width. The monolith's on-screen size is set by
+       * the camera's vertical FOV, so its rendered width tracks viewport
+       * HEIGHT only, not width (confirmed by screenshotting it settled
+       * at 1710x951 / 1920x1000 / 2200x1000: rock width was 587 / 615 /
+       * 618px — a near-constant 0.616x the viewport height, independent
+       * of width). A fixed-px card offset doesn't track that, so on any
+       * browser wider than 1710 at a similar height, the rock reads
+       * relatively narrower and a gap opens up where there used to be
+       * none — which is exactly the bug reported, on a real window.
+       *
+       * Fix: compute the rest offset from viewport height, the same way
+       * the rock itself scales, rather than touching the CSS anchor at
+       * all. The CSS base for each card becomes `right-1/2`/`left-1/2`
+       * (desktop only — its own right/left edge starts exactly at the
+       * horizontal centre, matching the monolith's own centring), and
+       * this is the GSAP x this settles to: half the rock's width,
+       * minus how far onto it the card should reach. Both coefficients
+       * were measured the same way: half-rock = 0.308 * vh (half of the
+       * measured 0.616), overlap = 0.08 * vh (measured off the owner's
+       * reference capture: the card's edge crosses about 8% of a
+       * viewport-height's worth onto the rock at full overlap).
+       *
+       * Below the `sm` breakpoint the cards still dock to the screen
+       * edge (`left-0`/`right-0` in the JSX, unrelated to the monolith's
+       * position) — this formula must not touch that layout, so it
+       * returns 0 there.
+       */
+      const restX = (sign: 1 | -1) => () =>
+        window.innerWidth < 640 ? 0 : sign * (0.308 - 0.08) * window.innerHeight;
+
       // Always 3 — six services in diagonal pairs, same assumption the
       // window math above already makes. Looping a fixed count rather
       // than `pairs.forEach` keeps `pairs` (a fresh array every render)
@@ -195,7 +228,7 @@ export function ServicesScene() {
         tl.fromTo(
           `.svc-pair-${i}-a`,
           { x: () => -window.innerWidth * 0.45 },
-          { x: 0, ease: "power4.out", duration },
+          { x: restX(-1), ease: "power4.out", duration },
           windowStart,
         )
           .fromTo(
@@ -211,7 +244,7 @@ export function ServicesScene() {
         tl.fromTo(
           `.svc-pair-${i}-b`,
           { x: () => window.innerWidth * 0.45 },
-          { x: 0, ease: "power4.out", duration },
+          { x: restX(1), ease: "power4.out", duration },
           windowStart,
         )
           .fromTo(
@@ -326,13 +359,13 @@ export function ServicesScene() {
               {pair[0] ? (
                 <ServiceCallout
                   service={pair[0]}
-                  className={`svc-pair-${i}-a absolute bottom-[110px] left-0 opacity-0 sm:bottom-[310px] sm:left-[180px]`}
+                  className={`svc-pair-${i}-a absolute bottom-[110px] left-0 opacity-0 sm:bottom-[310px] sm:left-auto sm:right-1/2`}
                 />
               ) : null}
               {pair[1] ? (
                 <ServiceCallout
                   service={pair[1]}
-                  className={`svc-pair-${i}-b absolute right-0 top-[128px] opacity-0 sm:right-[180px] sm:top-[285px]`}
+                  className={`svc-pair-${i}-b absolute right-0 top-[128px] opacity-0 sm:right-auto sm:left-1/2 sm:top-[285px]`}
                 />
               ) : null}
             </div>

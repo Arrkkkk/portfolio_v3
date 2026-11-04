@@ -17,7 +17,7 @@ export const cn = (...parts: Array<string | false | null | undefined>) =>
  * on this scale — defined once here so they can't drift apart.
  */
 export const SERVICES_SVH_P1_P4 = 200;
-export const SERVICES_SVH_TOTAL = 1100;
+export const SERVICES_SVH_TOTAL = 1200;
 export const SERVICES_P1_P4_SCALE = SERVICES_SVH_P1_P4 / SERVICES_SVH_TOTAL / 0.5;
 
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;

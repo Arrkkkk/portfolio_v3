@@ -148,9 +148,17 @@ of the title, inside a **frosted-glass card** (dark translucent panel, backdrop-
 visibly soft-blurred through it where it passes behind). Appears in **diagonal pairs, always at the
 same two corners**: bottom-left and top-right — not alternating, and not top-left/bottom-right; the
 2fps frame recording under-sampled this and the original note here was wrong, corrected against a
-direct capture of trionn.com. A pair doesn't cross-fade in place: it rises up into its resting corners
-(`y: 40 → 0`), holds, then keeps rising on out (`y: 0 → -40`) as the next pair rises in under it — one
-continuous upward procession, not three independent fades. Six labels total:
+direct capture of trionn.com.
+
+A pair is not three discrete beats (fly in, static hold, fly out) — it's **one continuous path per
+card**, off-screen corner to off-screen corner, that only *reads* as pausing: re-checked against
+`Trion Frames/frame_0156`–`frame_0172` (and a hand-traced path the owner supplied), the card's
+horizontal approach settles onto the monolith's edge quickly while its vertical travel keeps moving at
+a steady rate for the whole duration, including through the part that looks like a hold. It never
+stops. The next pair's own approach starts once the current pair is **about half-way through its own
+journey** — by which point it's at its rest position and mid-"hug" — not after a separate hold phase
+ends, so for a stretch, four cards (two settled-ish, two still approaching) are on screen together.
+Six labels total:
 AI & Intelligent Automation · Website & Mobile Design · Web Development · WordPress Development ·
 Product Design · Branding.
 

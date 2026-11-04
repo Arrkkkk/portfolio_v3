@@ -126,52 +126,60 @@ export function ServicesScene() {
       );
 
       /*
-       * P5 — each card flies in from its own screen corner, in to where it
-       * rests against the monolith's side, holds, then keeps travelling
-       * straight through and off in the SAME direction it arrived from —
-       * not a cross-fade, and not a simple fade-in-place either (both
-       * tried and rejected against a direct capture of trionn.com; see
-       * COMPONENTS.md §18). The first label of every pair always
-       * originates bottom-left and continues straight up past its resting
-       * spot; the second always originates top-right and continues
-       * straight down. Because the vertical leg never touches x, the
-       * card's edge stays flush against the same side of the rock for the
-       * whole glide instead of drifting away from it.
+       * P5 — each card travels ONE continuous path, corner to corner: in
+       * from off-screen bottom-left (or top-right), past the monolith's
+       * side, out off-screen top (or bottom). Not three separate tweens
+       * (enter, static hold, exit) — that was tried and it's wrong. Re-
+       * examined directly against Trion Frames/frame_0156–0172 (2fps, so
+       * each pair's read as it actually happens, not a single still) and
+       * a hand-drawn path overlay the owner supplied: the card never
+       * stops. The "hugging the rock" look is x settling onto the rock's
+       * edge quickly while y keeps moving at a steady rate the whole
+       * time — a dogleg, not a stop-and-go. Two tweens per card, same
+       * start position and duration, different eases:
        *
-       * This used to be ~13svh for a whole flight (0.033 of the old
-       * 400svh section) — a tiny scroll nudge finished the entire
-       * corner-to-rock trip, so scrolling didn't feel like it was driving
-       * the motion at all. Also wrong per a direct re-check of
-       * trionn.com: a later pair starts flying in while the EARLIER
-       * pair is STILL FULLY SETTLED (mid-hold, not mid-exit) — four cards
-       * on screen together for a stretch, not strictly one pair at a
-       * time. Both fixed by growing the section itself (SVH constants
-       * below) rather than reallocating the existing 400svh: P1–P4 keep
-       * their original absolute scroll distance (via SERVICES_P1_P4_SCALE)
-       * so nothing about the rise/flip/scatter above changes, and ALL of
-       * the added height goes to P5. Each pair's own enter+hold+exit
-       * cycle is now 450svh by itself (vs. the ~26svh a whole pair used
-       * to get), and consecutive pairs START only 225svh apart — the
-       * midpoint of the PREVIOUS pair's own hold (enter 150 + half of a
-       * 150-long hold), not after it. An earlier version staggered by
-       * enter+hold exactly (250svh), which put the overlap entirely in
-       * the exit leg — the next pair only started once the previous one
-       * had ALREADY begun fading, never while it was genuinely settled.
+       *   x: power4.out, off-screen -> 0 — nearly all of its motion
+       *      happens in the first ~30% of the duration, then barely
+       *      moves, which is what reads as "locked onto the rock's edge"
+       *      even though it's still technically, continuously easing.
+       *   y: linear ("none"), off-screen-start -> off-screen-exit in one
+       *      sweep, passing through y:0 (the measured rest position,
+       *      same left-180/bottom-310 etc. anchors as before) at the
+       *      exact midpoint of the tween — ties y directly to scroll
+       *      distance, so scrolling reads as what's pushing the card,
+       *      not an animation playing out on its own.
+       *
+       * This used to be three separate tweens spanning ~13svh total
+       * (0.033 of the old 400svh section) — both too short to feel
+       * scroll-driven AND structurally wrong (a real stop in the
+       * middle). Now one continuous path per card, 500svh long.
+       *
+       * Overlap: "the next pair becomes visible once the current one has
+       * covered about half of its hugging track" (owner's words, and
+       * Trion Frames/frame_0160→0168 show the same thing: one pair fully
+       * on screen while the next is already partway through its own
+       * approach). Since x is ~settled and y is at its own rest point by
+       * the midpoint of a card's duration, starting the next pair at
+       * HALF of the current pair's duration lands it right there.
+       * SVH_STAGGER is therefore exactly SVH_DURATION / 2, not an
+       * independently-tuned number — the overlap is structural, not a
+       * coincidence that needs re-tuning if SVH_DURATION ever changes.
        */
-      const SVH_ENTER = 150;
-      const SVH_HOLD = 150;
-      const SVH_EXIT = 150;
-      const SVH_STAGGER = 225; // ENTER + HOLD/2 — next pair starts mid-hold, not at exit
-      // SERVICES_SVH_P1_P4 + 2 staggers + one full cycle = SERVICES_SVH_TOTAL
-      // (200 + 500 + 400 = 1100) — both constants live in lib/utils.ts
-      // alongside the scale MonolithScene also depends on; if these svh
-      // numbers below ever change, SERVICES_SVH_TOTAL there must too, and
-      // so must the literal h-[1100svh] in the JSX below (Tailwind needs
-      // that class spelled out, not built from a variable).
+      const SVH_DURATION = 500;
+      const SVH_STAGGER = SVH_DURATION / 2; // next pair starts at the current pair's midpoint
+      // SERVICES_SVH_P1_P4 + 2 staggers + one full duration = SERVICES_SVH_TOTAL
+      // (200 + 500 + 500 = 1200) — both constants live in lib/utils.ts
+      // alongside the scale MonolithScene also depends on; if SVH_DURATION
+      // changes, SERVICES_SVH_TOTAL there must too, and so must the
+      // literal h-[1200svh] in the JSX below (Tailwind needs that class
+      // spelled out, not built from a variable).
       const pairStart = (i: number) => (SERVICES_SVH_P1_P4 + i * SVH_STAGGER) / SERVICES_SVH_TOTAL;
-      const enterDur = SVH_ENTER / SERVICES_SVH_TOTAL;
-      const holdDur = SVH_HOLD / SERVICES_SVH_TOTAL;
-      const exitDur = SVH_EXIT / SERVICES_SVH_TOTAL;
+      const duration = SVH_DURATION / SERVICES_SVH_TOTAL;
+      // Fade in/out only — never the thing that makes a card feel like
+      // it's "arrived"; position alone does that. Short relative to the
+      // full duration so a card is at full opacity well before its x
+      // has settled.
+      const fadeDur = duration * 0.1;
 
       // Always 3 — six services in diagonal pairs, same assumption the
       // window math above already makes. Looping a fixed count rather
@@ -179,39 +187,38 @@ export function ServicesScene() {
       // out of this effect's dependencies.
       for (let i = 0; i < 3; i++) {
         const windowStart = pairStart(i);
-        const exitStart = windowStart + enterDur + holdDur;
 
-        // First label: bottom-left corner -> rests on the rock's left side -> straight up and out.
+        // First label: bottom-left corner -> past the rock's left side -> straight up and off.
         tl.fromTo(
           `.svc-pair-${i}-a`,
-          {
-            x: () => -window.innerWidth * 0.45,
-            y: () => window.innerHeight * 0.45,
-            autoAlpha: 0,
-          },
-          { x: 0, y: 0, autoAlpha: 1, duration: enterDur },
+          { x: () => -window.innerWidth * 0.45 },
+          { x: 0, ease: "power4.out", duration },
           windowStart,
-        ).to(
-          `.svc-pair-${i}-a`,
-          { y: () => -window.innerHeight * 0.45, autoAlpha: 0, duration: exitDur },
-          exitStart,
-        );
+        )
+          .fromTo(
+            `.svc-pair-${i}-a`,
+            { y: () => window.innerHeight * 0.45 },
+            { y: () => -window.innerHeight * 0.45, ease: "none", duration },
+            windowStart,
+          )
+          .fromTo(`.svc-pair-${i}-a`, { autoAlpha: 0 }, { autoAlpha: 1, duration: fadeDur }, windowStart)
+          .to(`.svc-pair-${i}-a`, { autoAlpha: 0, duration: fadeDur }, windowStart + duration - fadeDur);
 
-        // Second label: top-right corner -> rests on the rock's right side -> straight down and out.
+        // Second label: top-right corner -> past the rock's right side -> straight down and off.
         tl.fromTo(
           `.svc-pair-${i}-b`,
-          {
-            x: () => window.innerWidth * 0.45,
-            y: () => -window.innerHeight * 0.45,
-            autoAlpha: 0,
-          },
-          { x: 0, y: 0, autoAlpha: 1, duration: enterDur },
+          { x: () => window.innerWidth * 0.45 },
+          { x: 0, ease: "power4.out", duration },
           windowStart,
-        ).to(
-          `.svc-pair-${i}-b`,
-          { y: () => window.innerHeight * 0.45, autoAlpha: 0, duration: exitDur },
-          exitStart,
-        );
+        )
+          .fromTo(
+            `.svc-pair-${i}-b`,
+            { y: () => -window.innerHeight * 0.45 },
+            { y: () => window.innerHeight * 0.45, ease: "none", duration },
+            windowStart,
+          )
+          .fromTo(`.svc-pair-${i}-b`, { autoAlpha: 0 }, { autoAlpha: 1, duration: fadeDur }, windowStart)
+          .to(`.svc-pair-${i}-b`, { autoAlpha: 0, duration: fadeDur }, windowStart + duration - fadeDur);
       }
 
       st = tl.scrollTrigger;
@@ -246,15 +253,15 @@ export function ServicesScene() {
   }, [reduced, pairs.length]);
 
   return (
-    // h-[1100svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
+    // h-[1200svh] must equal SERVICES_SVH_TOTAL (lib/utils.ts) — Tailwind
     // needs the class spelled out literally, so this can't read the
     // constant directly. The "light" marker's 40svh is untouched: it
     // marks the same absolute point (P2's luminance flip) as before,
     // which SERVICES_P1_P4_SCALE keeps fixed; only the "dark" marker's
     // height changes, to cover the rest of the now-taller section.
-    <div ref={section} className="relative h-[1100svh]">
+    <div ref={section} className="relative h-[1200svh]">
       <ChapterMarker className="absolute left-0 top-0 h-[40svh] w-px" theme="light" />
-      <ChapterMarker className="absolute left-0 top-[40svh] h-[1060svh] w-px" theme="dark" />
+      <ChapterMarker className="absolute left-0 top-[40svh] h-[1160svh] w-px" theme="dark" />
 
       <div
         ref={stage}
@@ -303,11 +310,12 @@ export function ServicesScene() {
           trionn.com: all three pairs land there, not an alternating
           diagonal — COMPONENTS.md's "top-left + bottom-right" note was
           wrong, read off too few of the 2fps frames to catch it). The
-          fly-in/hold/fly-out motion is GSAP-driven on `.svc-pair-${i}-a`
-          and `-b` above (one class per card, not per pair — the two
-          halves of a pair travel in opposite directions, so they can't
-          share a tween). `opacity-0` is the pre-JS/reduced-motion
-          default, overridden by GSAP's inline style once it runs.
+          continuous corner-to-corner path is GSAP-driven on
+          `.svc-pair-${i}-a` and `-b` above (one class per card, not per
+          pair — the two halves of a pair travel in opposite directions,
+          so they can't share a tween). `opacity-0` is the pre-JS/
+          reduced-motion default, overridden by GSAP's inline style once
+          it runs.
         */}
         <div className="pointer-events-none absolute inset-0 z-[8] page-x">
           {pairs.map((pair, i) => (

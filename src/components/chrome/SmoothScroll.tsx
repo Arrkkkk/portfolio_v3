@@ -23,6 +23,16 @@ export function SmoothScroll() {
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       touchMultiplier: 1.6,
+      /*
+       * Default is 1 — a single fast trackpad flick converted 1:1 into
+       * scroll distance, which could blow through an entire long pinned
+       * scene (e.g. the ~1275svh services section) in one gesture.
+       * 0.55 is a global slowdown (every section, not just that one),
+       * tried first since it addresses the actual cause — the amount of
+       * scroll one gesture produces — rather than any one section's own
+       * length.
+       */
+      wheelMultiplier: 0.55,
     });
 
     lenis.on("scroll", ScrollTrigger.update);

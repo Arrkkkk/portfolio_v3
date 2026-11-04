@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { explorations } from "@/data/explorations";
+import { DIM_GALLERY_FLATTEN_START, DIM_GALLERY_FLATTEN_SPAN } from "@/lib/utils";
 
 /**
  * A12 — the curved screenshot arc (frames 193–243).
@@ -52,7 +53,11 @@ function Tiles({ progress }: { progress: React.RefObject<number> }) {
     const p = THREE.MathUtils.clamp(progress.current ?? 0, 0, 1);
     // Sweep across the scene, then hold while the tiles flatten.
     const sweep = THREE.MathUtils.clamp(p / 0.78, 0, 1);
-    const flatten = THREE.MathUtils.clamp((p - 0.72) / 0.28, 0, 1);
+    const flatten = THREE.MathUtils.clamp(
+      (p - DIM_GALLERY_FLATTEN_START) / DIM_GALLERY_FLATTEN_SPAN,
+      0,
+      1,
+    );
     // Curvature rises then falls (frames 205–222 are the flattest, largest read).
     const bend = Math.sin(sweep * Math.PI) * 0.9 * (1 - flatten);
 

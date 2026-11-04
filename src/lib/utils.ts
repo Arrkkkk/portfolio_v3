@@ -26,6 +26,23 @@ export const SERVICES_SVH_P1_P4 = 320;
 export const SERVICES_SVH_TOTAL = 1395;
 export const SERVICES_P1_P4_SCALE = SERVICES_SVH_P1_P4 / SERVICES_SVH_TOTAL / 0.5;
 
+/*
+ * The curved gallery's tiles sweep across the pinned scene, then flatten
+ * into a static 2-row grid over the scene's final stretch — see
+ * CurvedGallery.tsx's own `flatten` value. The Design In Motion headline
+ * sits underneath that grid in document flow, and once the grid is fully
+ * flattened it's large enough to cover the headline entirely, which read
+ * as broken rather than intentional (owner's call, after seeing it). The
+ * fix fades the headline out over that same final stretch, scrubbed to the
+ * same scroll progress driving the gallery — not a separately-tuned fade
+ * window, because "linked to the scrolling" means it has to track the
+ * grid's own arrival exactly, not just happen to look similar. Both
+ * DesignInMotion.tsx (the headline fade) and CurvedGallery.tsx (the grid
+ * flatten) read these so they can't drift apart.
+ */
+export const DIM_GALLERY_FLATTEN_START = 0.72;
+export const DIM_GALLERY_FLATTEN_SPAN = 0.28;
+
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export const clamp = (v: number, min: number, max: number) =>

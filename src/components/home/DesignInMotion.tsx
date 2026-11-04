@@ -42,7 +42,9 @@ export function DesignInMotion() {
   }, [reduced, sceneOn]);
 
   return (
-    <ChapterSection theme="light" className="bg-grey text-ink">
+    // dim-section/dim-heading: ServicesWipe.tsx's hooks into this section —
+    // see that file for why. Mirrors KeyFacts' kf-headings/kf-card pattern.
+    <ChapterSection theme="light" className="dim-section bg-grey text-ink">
       <div ref={section} className={sceneOn ? "relative h-[350svh]" : "relative"}>
         <div
           className={
@@ -54,9 +56,10 @@ export function DesignInMotion() {
           {/* Split heading — the arc passes in front of it */}
           <div className="pointer-events-none page-x">
             <BlurText
+              manual
               as="h2"
               text={site.motion.headingA}
-              className="block text-[clamp(40px,5.6vw,96px)] leading-none uppercase tracking-[-0.02em]"
+              className="dim-heading block text-[clamp(40px,5.6vw,96px)] leading-none uppercase tracking-[-0.02em]"
             />
             <div className="mt-2 flex items-start gap-10 pl-[8%]">
               <p className="label-mono mt-3 text-ink-mid">
@@ -67,9 +70,10 @@ export function DesignInMotion() {
                 ))}
               </p>
               <BlurText
+                manual
                 as="h2"
                 text={site.motion.headingB}
-                className="block text-[clamp(40px,5.6vw,96px)] leading-none uppercase tracking-[-0.02em]"
+                className="dim-heading block text-[clamp(40px,5.6vw,96px)] leading-none uppercase tracking-[-0.02em]"
               />
             </div>
           </div>

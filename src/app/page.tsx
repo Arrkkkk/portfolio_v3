@@ -1,4 +1,5 @@
 import { ChapterWipe } from "@/components/home/ChapterWipe";
+import { ServicesWipe } from "@/components/home/ServicesWipe";
 import { DarkChapters } from "@/components/home/DarkChapters";
 import { Hero } from "@/components/home/Hero";
 import { Statement } from "@/components/home/Statement";
@@ -29,6 +30,9 @@ export default function Home() {
       <SelectedWork />
       <CollectionCta />
       <ServicesScene />
+      {/* My Expertise -> Design In Motion: same five-band wipe technique as
+          ChapterWipe, in its own file — see ServicesWipe.tsx. */}
+      <ServicesWipe />
       <ClientStories />
       <DesignInMotion />
       <FooterCta />

@@ -111,17 +111,24 @@ export function ServicesScene() {
       );
 
       /*
-       * P5 — each pair rises up into its resting corners, holds, then keeps
-       * rising on out as the next pair rises in under it. Re-captured
-       * directly off trionn.com (frames here, not in the 2fps recording,
-       * undersold it as a plain cross-fade): a pair doesn't fade in place,
-       * it travels — up from `y: 40` to `0` on the way in, straight on
-       * through to `y: -40` on the way out, so consecutive pairs read as
-       * one continuous upward procession rather than three unrelated
-       * fades. Three 0.165-wide windows starting at 0.5, matching the
-       * three pairs; the middle 60% of each window is an implicit hold
-       * (no tween touches it, so it just sits at the previous tween's end
-       * value) and the first/last 20% are the rise in/out.
+       * P5 — each card flies in from its own screen corner, in to where it
+       * rests against the monolith's side, holds, then keeps travelling
+       * straight through and off in the SAME direction it arrived from —
+       * not a cross-fade, and not a simple fade-in-place either (both
+       * tried and rejected against a direct capture of trionn.com; see
+       * COMPONENTS.md §18). The first label of every pair always
+       * originates bottom-left and continues straight up past its resting
+       * spot; the second always originates top-right and continues
+       * straight down. Because the vertical leg never touches x, the
+       * card's edge stays flush against the same side of the rock for the
+       * whole glide instead of drifting away from it.
+       *
+       * Corner-to-rest offsets are viewport-relative (not flat px, after
+       * the P3 scatter already taught this lesson once) so a card always
+       * starts off-screen, at any width. x/y here are added ON TOP of the
+       * CSS left/right/top/bottom anchors below — at rest (x:0, y:0) a
+       * card sits exactly at its measured resting position; the offsets
+       * only describe the extra travel before/after that.
        */
       const PAIR_START = 0.5;
       const PAIR_WINDOW = 0.165;
@@ -132,15 +139,38 @@ export function ServicesScene() {
       // out of this effect's dependencies.
       for (let i = 0; i < 3; i++) {
         const windowStart = PAIR_START + i * PAIR_WINDOW;
+        const exitStart = windowStart + PAIR_WINDOW - PAIR_EDGE;
+
+        // First label: bottom-left corner -> rests on the rock's left side -> straight up and out.
         tl.fromTo(
-          `.svc-pair-${i}`,
-          { y: 40, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: PAIR_EDGE },
+          `.svc-pair-${i}-a`,
+          {
+            x: () => -window.innerWidth * 0.45,
+            y: () => window.innerHeight * 0.45,
+            autoAlpha: 0,
+          },
+          { x: 0, y: 0, autoAlpha: 1, duration: PAIR_EDGE },
           windowStart,
         ).to(
-          `.svc-pair-${i}`,
-          { y: -40, autoAlpha: 0, duration: PAIR_EDGE },
-          windowStart + PAIR_WINDOW - PAIR_EDGE,
+          `.svc-pair-${i}-a`,
+          { y: () => -window.innerHeight * 0.45, autoAlpha: 0, duration: PAIR_EDGE },
+          exitStart,
+        );
+
+        // Second label: top-right corner -> rests on the rock's right side -> straight down and out.
+        tl.fromTo(
+          `.svc-pair-${i}-b`,
+          {
+            x: () => window.innerWidth * 0.45,
+            y: () => -window.innerHeight * 0.45,
+            autoAlpha: 0,
+          },
+          { x: 0, y: 0, autoAlpha: 1, duration: PAIR_EDGE },
+          windowStart,
+        ).to(
+          `.svc-pair-${i}-b`,
+          { y: () => window.innerHeight * 0.45, autoAlpha: 0, duration: PAIR_EDGE },
+          exitStart,
         );
       }
 
@@ -227,25 +257,25 @@ export function ServicesScene() {
           trionn.com: all three pairs land there, not an alternating
           diagonal — COMPONENTS.md's "top-left + bottom-right" note was
           wrong, read off too few of the 2fps frames to catch it). The
-          rise/hold/rise-out motion is GSAP-driven on `.svc-pair-${i}`
-          above, not React state, so opacity starts at 0 inline (not a
-          Tailwind class) as the pre-JS/reduced-motion default — matches
-          the old activePair=-1 default of "nothing shown until animated
-          in" rather than flashing all three stacked at full opacity.
+          fly-in/hold/fly-out motion is GSAP-driven on `.svc-pair-${i}-a`
+          and `-b` above (one class per card, not per pair — the two
+          halves of a pair travel in opposite directions, so they can't
+          share a tween). `opacity-0` is the pre-JS/reduced-motion
+          default, overridden by GSAP's inline style once it runs.
         */}
         <div className="pointer-events-none absolute inset-0 z-[8] page-x">
           {pairs.map((pair, i) => (
-            <div key={i} className={`svc-pair-${i} absolute inset-0 page-x`} style={{ opacity: 0 }}>
+            <div key={i} className="absolute inset-0 page-x">
               {pair[0] ? (
                 <ServiceCallout
                   service={pair[0]}
-                  className="absolute bottom-[110px] left-0 sm:left-[13%]"
+                  className={`svc-pair-${i}-a absolute bottom-[110px] left-0 opacity-0 sm:bottom-[310px] sm:left-[180px]`}
                 />
               ) : null}
               {pair[1] ? (
                 <ServiceCallout
                   service={pair[1]}
-                  className="absolute right-0 top-[128px] sm:right-auto sm:left-[65%]"
+                  className={`svc-pair-${i}-b absolute right-0 top-[128px] opacity-0 sm:right-[180px] sm:top-[285px]`}
                 />
               ) : null}
             </div>
@@ -271,9 +301,18 @@ function ServiceCallout({
      * that; rounded-panel (6px, DESIGN-SYSTEM's own panel radius) keeps
      * the corner barely-there, matching the reference rather than a
      * rounder "card" radius.
+     *
+     * Size/spacing measured directly off a reference capture as pixel
+     * ratios of its viewport (not read-by-eye px, which a screenshot's
+     * own DPI/window-width can throw off): card ≈0.255 of viewport width
+     * → 436px at the 1710px reference; icon ≈0.053 → ~90px, far bigger
+     * than it looks relative to the title at a glance; the title→
+     * description gap is a good ~0.27 of the card's own height. The
+     * 30px title / 14px description were already right (COMPONENTS.md),
+     * confirmed against the same ratios.
      */
     <div
-      className={`max-w-[80vw] rounded-panel bg-black/45 p-8 text-text-hi backdrop-blur-md sm:max-w-[320px] ${className ?? ""}`}
+      className={`max-w-[80vw] rounded-panel bg-black/45 p-8 text-text-hi backdrop-blur-md sm:max-w-[436px] sm:p-10 ${className ?? ""}`}
     >
       <div className="flex items-start gap-6">
         <h3 className="text-title-md tracking-[-0.01em]">
@@ -285,9 +324,14 @@ function ServiceCallout({
             </>
           ) : null}
         </h3>
-        <ServiceIcon name={service.icon} className="mt-1 h-12 w-12 shrink-0 opacity-70" />
+        <ServiceIcon
+          name={service.icon}
+          className="mt-1 h-10 w-10 shrink-0 opacity-70 sm:h-[90px] sm:w-[90px]"
+        />
       </div>
-      <p className="mt-6 text-[14px] leading-[1.3] text-text-mid">{service.description}</p>
+      <p className="mt-6 text-[14px] leading-[1.3] text-text-mid sm:mt-16">
+        {service.description}
+      </p>
     </div>
   );
 }

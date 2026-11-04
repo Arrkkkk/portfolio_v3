@@ -431,7 +431,7 @@ function ServiceCallout({
       className={`max-w-[80vw] rounded-panel bg-black/45 p-8 text-text-hi backdrop-blur-md sm:max-w-[501px] sm:p-12 ${className ?? ""}`}
     >
       <div className="flex items-start gap-6">
-        <h3 className="text-[26px] leading-[1.2] tracking-[-0.01em] sm:text-[34px]">
+        <h3 className="text-[30px] leading-[1.2] tracking-[-0.01em] sm:text-[42px]">
           {service.lines[0]}
           {service.lines[1] ? (
             <>
@@ -445,7 +445,7 @@ function ServiceCallout({
           className="mt-1 h-10 w-10 shrink-0 opacity-70 sm:h-[90px] sm:w-[90px]"
         />
       </div>
-      <p className="mt-6 text-[15px] leading-[1.3] text-text-mid sm:mt-[72px] sm:text-[17px]">
+      <p className="mt-6 text-[17px] leading-[1.35] text-text-mid sm:mt-[72px] sm:text-[20px]">
         {service.description}
       </p>
     </div>

@@ -27,21 +27,46 @@ export const SERVICES_SVH_TOTAL = 1395;
 export const SERVICES_P1_P4_SCALE = SERVICES_SVH_P1_P4 / SERVICES_SVH_TOTAL / 0.5;
 
 /*
- * The curved gallery's tiles sweep across the pinned scene, then flatten
- * into a static 2-row grid over the scene's final stretch — see
- * CurvedGallery.tsx's own `flatten` value. The Design In Motion headline
- * sits underneath that grid in document flow, and once the grid is fully
- * flattened it's large enough to cover the headline entirely, which read
- * as broken rather than intentional (owner's call, after seeing it). The
- * fix fades the headline out over that same final stretch, scrubbed to the
- * same scroll progress driving the gallery — not a separately-tuned fade
- * window, because "linked to the scrolling" means it has to track the
- * grid's own arrival exactly, not just happen to look similar. Both
- * DesignInMotion.tsx (the headline fade) and CurvedGallery.tsx (the grid
- * flatten) read these so they can't drift apart.
+ * Design In Motion's pinned curved-gallery scene used to end the instant
+ * the gallery finished flattening into its grid — the section's own pin
+ * released at the same progress (1.0) the grid finished arriving at, so
+ * there was zero scroll left to actually look at the settled grid before
+ * the page moved on. DIM_SVH_TOTAL grew (350 -> 450svh) to hold a full
+ * extra viewport-height of pure scroll after the grid settles — owner's
+ * request ("no room to see them properly before they start scrolling").
+ *
+ * DIM_GALLERY_SCALE is how much every one of CurvedGallery's own progress
+ * thresholds (sweep end, flatten start/span) has to shrink to still
+ * complete at the same absolute scroll distance as before the section
+ * grew — same technique, same reasoning as SERVICES_P1_P4_SCALE above:
+ * the section got taller, the sequence inside it didn't get any longer on
+ * its own, so every fraction-of-the-whole it's written against has to
+ * shrink together, or the sequence itself would just slow down instead of
+ * gaining a hold at the end. (100 subtracted on both sides of the ratio
+ * because the pinned section's scrollable RANGE is its own height minus
+ * one viewport — the viewport itself isn't scroll distance, it's the
+ * sticky stage — so that's the figure the sequence's fractions are
+ * actually paced against.)
+ *
+ * The curved gallery's tiles sweep across the scene, then flatten into a
+ * static 2-row grid over its final stretch — see CurvedGallery.tsx's own
+ * `flatten` value. The Design In Motion headline (and its bottom caption
+ * row) sit underneath that grid in document flow, and once the grid is
+ * fully flattened it's large enough to cover both outright, which read as
+ * broken rather than intentional (owner's call, after seeing it). Fading
+ * them out over that same final stretch — scrubbed to the same scroll
+ * progress driving the gallery, not a separately-tuned fade window —
+ * turns "the grid covers the title" into "the title recedes as the grid
+ * arrives." DesignInMotion.tsx (the fade) and CurvedGallery.tsx (the
+ * flatten) both read these so they can't drift apart.
  */
-export const DIM_GALLERY_FLATTEN_START = 0.72;
-export const DIM_GALLERY_FLATTEN_SPAN = 0.28;
+export const DIM_SVH_ORIGINAL = 350;
+export const DIM_SVH_TOTAL = 450;
+export const DIM_GALLERY_SCALE = (DIM_SVH_ORIGINAL - 100) / (DIM_SVH_TOTAL - 100);
+
+export const DIM_GALLERY_SWEEP_END = 0.78 * DIM_GALLERY_SCALE;
+export const DIM_GALLERY_FLATTEN_START = 0.72 * DIM_GALLERY_SCALE;
+export const DIM_GALLERY_FLATTEN_SPAN = 0.28 * DIM_GALLERY_SCALE;
 
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 

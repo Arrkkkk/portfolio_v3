@@ -4,7 +4,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { explorations } from "@/data/explorations";
-import { DIM_GALLERY_FLATTEN_START, DIM_GALLERY_FLATTEN_SPAN } from "@/lib/utils";
+import {
+  DIM_GALLERY_FLATTEN_START,
+  DIM_GALLERY_FLATTEN_SPAN,
+  DIM_GALLERY_SWEEP_END,
+} from "@/lib/utils";
 
 /**
  * A12 — the curved screenshot arc (frames 193–243).
@@ -51,8 +55,11 @@ function Tiles({ progress }: { progress: React.RefObject<number> }) {
 
   useFrame(() => {
     const p = THREE.MathUtils.clamp(progress.current ?? 0, 0, 1);
-    // Sweep across the scene, then hold while the tiles flatten.
-    const sweep = THREE.MathUtils.clamp(p / 0.78, 0, 1);
+    // Sweep across the scene, then hold while the tiles flatten, then hold
+    // again once flattened — DIM_GALLERY_SWEEP_END (lib/utils.ts) is scaled
+    // down from the section's original pacing so this still finishes at the
+    // same absolute scroll distance now that the section is taller.
+    const sweep = THREE.MathUtils.clamp(p / DIM_GALLERY_SWEEP_END, 0, 1);
     const flatten = THREE.MathUtils.clamp(
       (p - DIM_GALLERY_FLATTEN_START) / DIM_GALLERY_FLATTEN_SPAN,
       0,

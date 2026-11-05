@@ -22,6 +22,7 @@ const CurvedGallery = dynamic(
 export function DesignInMotion() {
   const section = useRef<HTMLDivElement>(null);
   const headline = useRef<HTMLDivElement>(null);
+  const caption = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
   const reduced = useReducedMotion();
   const sceneOn = useSceneEnabled();
@@ -48,13 +49,18 @@ export function DesignInMotion() {
            * arrives": scrubbed to the same scroll progress driving the
            * gallery, not a separately-timed fade, so it rewinds in step
            * if the scene is scrolled back up.
+           *
+           * The bottom caption/link row (`caption`) sits behind the
+           * grid's own bottom row the same way, for the same reason —
+           * it's in normal document flow with no z-index relative to the
+           * z-10 gallery canvas either — so it fades on the same cue.
            */
           const flatten = clamp(
             (self.progress - DIM_GALLERY_FLATTEN_START) / DIM_GALLERY_FLATTEN_SPAN,
             0,
             1,
           );
-          gsap.set(headline.current, { opacity: 1 - flatten });
+          gsap.set([headline.current, caption.current], { opacity: 1 - flatten });
         },
       });
     }, sec);
@@ -118,7 +124,7 @@ export function DesignInMotion() {
             </div>
           )}
 
-          <div className="relative z-20 flex items-end justify-between gap-8 page-x">
+          <div ref={caption} className="relative z-20 flex items-end justify-between gap-8 page-x">
             <p className="max-w-[260px] text-[16px] leading-[1.35] text-ink">
               {site.motion.copy}
             </p>

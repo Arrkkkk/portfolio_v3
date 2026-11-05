@@ -6,7 +6,6 @@ import { Statement } from "@/components/home/Statement";
 import { MarqueeBand } from "@/components/home/MarqueeBand";
 import { KeyFacts } from "@/components/home/KeyFacts";
 import { SelectedWork } from "@/components/home/SelectedWork";
-import { CollectionCta } from "@/components/home/CollectionCta";
 import { ServicesScene } from "@/components/home/ServicesScene";
 import { ClientStories } from "@/components/home/ClientStories";
 import { DesignInMotion } from "@/components/home/DesignInMotion";
@@ -27,8 +26,11 @@ export default function Home() {
           and Key facts still rising while the bands fill. */}
       <ChapterWipe />
       <KeyFacts />
+      {/* The "Discover the complete collection..." CTA (previously its own
+          CollectionCta section here, now removed) lives as the closing card
+          inside SelectedWork's own horizontal track instead — see the
+          sw-card comment in SelectedWork.tsx. */}
       <SelectedWork />
-      <CollectionCta />
       <ServicesScene />
       {/* My Expertise -> Design In Motion: same five-band wipe technique as
           ChapterWipe, in its own file — see ServicesWipe.tsx. */}

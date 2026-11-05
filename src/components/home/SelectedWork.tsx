@@ -10,6 +10,7 @@ import { MonoLink } from "@/components/primitives/MonoLink";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { projects } from "@/data/projects";
+import { site } from "@/data/site";
 
 /**
  * PAGES §05 / A09 — vertical scroll is mapped to X translation of the whole
@@ -234,6 +235,32 @@ export function SelectedWork() {
                   </div>
                 </article>
               ))}
+
+              {/*
+                Closing CTA card — same message that used to live in its own
+                section right after this track (CollectionCta.tsx, removed).
+                The reference puts this content here: a card you only reach
+                after scrolling past every project, not a static section
+                bolted on below the track. `sw-card` is deliberate, not just
+                a naming match — it opts this into the same rise-as-it-
+                approaches animation every project card gets, via the
+                `.sw-card` query in this file's own effect, so it arrives
+                with the same motion rather than just appearing.
+                Text-only, like the opening "Selected work" card, rather
+                than an image-aspect box like the project cards — that's
+                the "same feel" the title column already has.
+              */}
+              <article className="sw-card flex flex-col items-center text-center lg:w-[500px] lg:shrink-0 lg:self-center">
+                <p className="max-w-[330px] text-[16px] leading-[1.35] text-ink-mid">
+                  {site.collection.copy}
+                </p>
+                <MonoLink
+                  className="mt-10 text-ink-mid"
+                  label={site.collection.link.label}
+                  href={site.collection.link.href}
+                  width={168}
+                />
+              </article>
             </div>
           </div>
         </div>

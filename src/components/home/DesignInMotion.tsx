@@ -71,11 +71,11 @@ export function DesignInMotion() {
     // dim-section/dim-heading: ServicesWipe.tsx's hooks into this section —
     // see that file for why. Mirrors KeyFacts' kf-headings/kf-card pattern.
     <ChapterSection theme="light" className="dim-section bg-grey text-ink">
-      {/* h-[450svh] must equal DIM_SVH_TOTAL (lib/utils.ts) — Tailwind needs
+      {/* h-[400svh] must equal DIM_SVH_TOTAL (lib/utils.ts) — Tailwind needs
           the class spelled out literally, same constraint as ServicesScene's
-          own h-[1395svh]. The extra 100svh over the original 350 is a pure
+          own h-[1395svh]. The extra 50svh over the original 350 is a pure
           hold after the gallery grid settles; see DIM_GALLERY_SCALE. */}
-      <div ref={section} className={sceneOn ? "relative h-[450svh]" : "relative"}>
+      <div ref={section} className={sceneOn ? "relative h-[400svh]" : "relative"}>
         <div
           className={
             sceneOn

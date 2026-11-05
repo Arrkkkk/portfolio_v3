@@ -31,9 +31,10 @@ export const SERVICES_P1_P4_SCALE = SERVICES_SVH_P1_P4 / SERVICES_SVH_TOTAL / 0.
  * the gallery finished flattening into its grid — the section's own pin
  * released at the same progress (1.0) the grid finished arriving at, so
  * there was zero scroll left to actually look at the settled grid before
- * the page moved on. DIM_SVH_TOTAL grew (350 -> 450svh) to hold a full
- * extra viewport-height of pure scroll after the grid settles — owner's
- * request ("no room to see them properly before they start scrolling").
+ * the page moved on. DIM_SVH_TOTAL grew (350 -> 400svh) to hold half a
+ * viewport-height of pure scroll after the grid settles — owner's request
+ * ("no room to see them properly before they start scrolling"), then
+ * halved again on request after the first 100svh read as too much.
  *
  * DIM_GALLERY_SCALE is how much every one of CurvedGallery's own progress
  * thresholds (sweep end, flatten start/span) has to shrink to still
@@ -61,7 +62,7 @@ export const SERVICES_P1_P4_SCALE = SERVICES_SVH_P1_P4 / SERVICES_SVH_TOTAL / 0.
  * flatten) both read these so they can't drift apart.
  */
 export const DIM_SVH_ORIGINAL = 350;
-export const DIM_SVH_TOTAL = 450;
+export const DIM_SVH_TOTAL = 400;
 export const DIM_GALLERY_SCALE = (DIM_SVH_ORIGINAL - 100) / (DIM_SVH_TOTAL - 100);
 
 export const DIM_GALLERY_SWEEP_END = 0.78 * DIM_GALLERY_SCALE;
